@@ -13,6 +13,7 @@ class CustomBackend(BaseBackend):
     def authenticate(self, request, token=None):
         # Check if a token is provided
         token = request.META.get('HTTP_AUTHORIZATION').split(' ')[1] if 'HTTP_AUTHORIZATION' in request.META else None
+        
         logger.info("Custom Backed Hit Successfully")
 
         if not token:
@@ -32,18 +33,21 @@ class CustomBackend(BaseBackend):
                     user = res.json()
                     
                     if res.status_code == 200:
-                        return user
-                    else:
-                        raise exceptions.AuthenticationFailed(user)
+                        user['data']['payload']['is_authenticated'] = True
+                        user = user['data']['payload']
+                        return user, None
+                    # else:
+                    #     raise exceptions.AuthenticationFailed(user)
                     
                 except:
-                    # If the user does not exist, return None.
-                    logger.info(user)
-                    raise exceptions.AuthenticationFailed(user)
+                    raise exceptions.AuthenticationFailed("Authentication Credentials not provided.")
             else:
                 # If 'user_id' is not present in the token payload, return None.
                 raise exceptions.AuthenticationFailed('User ID not found.')
 
+        except jwt.InvalidKeyError:
+            raise exceptions.AuthenticationFailed('Token has expired.')
+        
         except jwt.ExpiredSignatureError:
             # Token is expired
             raise exceptions.AuthenticationFailed('Token has expired.')
@@ -57,3 +61,6 @@ class CustomBackend(BaseBackend):
         # Implement this method even if it's not used in your custom backend.
         # The method is required by Django's authentication backend API.
         return 'Bearer'
+
+
+

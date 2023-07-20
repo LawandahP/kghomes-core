@@ -46,7 +46,7 @@ class PropertyCreateListView(generics.GenericAPIView):
     pagination_class = CustomPagination
     serializer_class = PropertySerializer
     authentication_classes = [CustomBackend]
-    # permission_classes = [IsRealtor]
+    permission_classes = [IsRealtor, ]
     filterset_class = PropertyFilter
     search_fields = ['name']
 
@@ -59,11 +59,14 @@ class PropertyCreateListView(generics.GenericAPIView):
 
     def post(self, request):
         data = request.data
-        name = data['name']
+        user = request.user
+      
         serializer = self.serializer_class(
             data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            account = user["account"]["id"]
+            name = data['name']
+            serializer.save(account=account)
             
             return customResponse(
                 payload=serializer.data,

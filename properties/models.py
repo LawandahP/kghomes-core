@@ -44,7 +44,7 @@ class Amenities(models.Model):
 
 class Property(models.Model):
     id = CustomUUIDField()
-    name = models.CharField(max_length=255, null=True)
+    name = models.CharField(max_length=255, null=False, blank=False)
     property_kind = models.ForeignKey(Kind, blank=True, on_delete=models.CASCADE, null=True)
     property_type = models.ForeignKey(Type, blank=True, on_delete=models.CASCADE, null=True)
     address = models.TextField(max_length=255, blank=True, null=True)
@@ -52,7 +52,7 @@ class Property(models.Model):
     slug = models.SlugField(blank=True, null=True)
     # images = models.ManyToManyField(Files, blank=True, related_name="property_images")
     owner = models.CharField(max_length=255, blank=True, null=True)
-    account = models.CharField(max_length=255)
+    account = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
         return self.name

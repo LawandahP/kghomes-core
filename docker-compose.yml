@@ -18,8 +18,8 @@ services:
             context: .
         container_name: kghomesV2-core
         # command: python3 manage.py runserver 0.0.0.0:8001
-        volumes:
-            - .:/usr/src/app
+        # volumes:
+        #     - .:/usr/src/app
         restart: on-failure
         
         ports:
@@ -34,7 +34,7 @@ services:
             - POSTGRES_PORT=$POSTGRES_PORT
             - POSTGRES_HOST=$POSTGRES_HOST
         # depends_on:
-        #     - postgres_db
+        #     - kghomesV2-db
         networks:
             - voldermort-net
 

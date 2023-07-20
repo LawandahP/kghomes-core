@@ -1,4 +1,6 @@
 from config.auth import CustomBackend
+from utils.utils import logger
+
 
 class CustomAttributesMiddleware:
     def __init__(self, get_response):
@@ -8,8 +10,6 @@ class CustomAttributesMiddleware:
         # Run the custom backend authentication
         user = CustomBackend().authenticate(request)
         
-        # Set the user on the request object
         request.user = user
-
         response = self.get_response(request)
         return response
