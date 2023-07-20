@@ -1,0 +1,47 @@
+version: "3.9"
+name: "kghomesV2-core"
+
+services:
+    # postgres_db:
+    #     image: postgres:14
+    #     container_name: kghomesV2-db
+    #     restart: always
+    #     environment:
+    #         - POSTGRES_DB=$POSTGRES_DB
+    #         - POSTGRES_USER=$POSTGRES_USER
+    #         - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+    #     volumes:
+    #         - pgdata:/var/lib/postgresql/data/
+
+    backend:
+        build:
+            context: .
+        container_name: kghomesV2-core
+        # command: python3 manage.py runserver 0.0.0.0:8001
+        volumes:
+            - .:/usr/src/app
+        restart: on-failure
+        
+        ports:
+            - "8002:8002"
+        environment:
+            # - DEBUG=1
+            # - CELERY_BROKER=redis://redis:6379/0
+            # - CELERY_BACKEND=redis://redis:6379/0
+            - POSTGRES_DB=$POSTGRES_DB
+            - POSTGRES_USER=$POSTGRES_USER
+            - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+            - POSTGRES_PORT=$POSTGRES_PORT
+            - POSTGRES_HOST=$POSTGRES_HOST
+        # depends_on:
+        #     - postgres_db
+        networks:
+            - voldermort-net
+
+networks:
+    voldermort-net:
+        external: true
+
+        
+# volumes:
+#     pgdata:
