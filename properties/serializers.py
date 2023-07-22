@@ -37,8 +37,7 @@ class PropertySerializer(serializers.ModelSerializer):
     class Meta:
         model = Property
         fields = [
-            'id', 'slug', 'name', 'address' ,
-            'address', 'owner', 'property_type', 'account',
+            'id', 'slug', 'name', 'address', 'owner', 'property_type', 'account',
         ]
         read_only_fields = [
             "units",
@@ -100,22 +99,15 @@ class PropertySerializer(serializers.ModelSerializer):
 
 
 class PropertyDetailsSerializer(serializers.ModelSerializer):
-    # amenities = serializers.StringRelatedField(many=True)
-    # property_kind = PropertyKindSerializer(many=False)
-    # owner = UserSer(many=False, read_only=True)
-    # images = FilesSerializer(many=True, read_only=True)
+ 
     class Meta:
         model = Property
         fields = [ 
             'id', 'slug', 'name', 'address', 'amenities', 
-            'address', 'owner', 'property_kind', 'property_type'
+            'address', 'owner', 'property_kind', 'property_type', 'account'
             ]
-        read_only_fields = [ "id", "slug", "amenities", "images" ]
+        read_only_fields = [ "id", "slug", "amenities"]
 
-    # def to_representation(self, instance):
-    #     response = super().to_representation(instance)
-    #     response['property_type'] = PropertyTypeSerializer(instance.property_type).data
-    #     return response
 
 class PropertyUpdateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -132,7 +124,7 @@ class AmenitiesResponseSerializer(serializers.Serializer):
     class Meta:
         model = Amenities
         fields = ['name']
-
+                                                                                                                
     def get_name(self, instance):
         # return [amenity.name for amenity in instance]
         return [instance.name]
