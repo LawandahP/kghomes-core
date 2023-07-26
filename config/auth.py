@@ -17,19 +17,21 @@ class CustomBackend(BaseBackend):
         logger.info("Custom Backed Hit Successfully")
 
         if not token:
-            return None
+            raise exceptions.AuthenticationFailed('Authentication Failed')
 
         try:
             decoded_token = jwt.decode(token, settings.SIGNING_KEY, algorithms=['HS256'])
 
             # Extract user information from the decoded token (e.g., 'user_id' is the key in the payload containing the user's identifier)
             user_id = decoded_token.get('user_id')
-
+            logger.warning(user_id)
             if user_id:
                 # Try to retrieve the user with the given user_id
                 try:
                     headers = {'Authorization': f'Bearer {token}'}
-                    res = requests.get('http://kghomesv2-backend:8001/api/v1/current_user/', headers=headers)
+                    res = requests.get('http://backend-auth:8001/api/v1/current_user/', headers=headers)
+                    logger.info(res)
+                    logger.info("auth hit successfully")
                     user = res.json()
                     
                     if res.status_code == 200:

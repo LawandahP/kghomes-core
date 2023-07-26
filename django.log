@@ -10231,3 +10231,4 @@ LINE 1: INSERT INTO "properties" ("id", "name", "property_kind_id", ...
 [20/Jul/2023 19:47:09] INFO:django.utils.autoreload:Watching for file changes with StatReloader
 [20/Jul/2023 19:48:12] INFO:django.utils.autoreload:Watching for file changes with StatReloader
 [20/Jul/2023 19:49:22] INFO:django.utils.autoreload:Watching for file changes with StatReloader
+[24/Jul/2023 14:53:22] INFO:django.utils.autoreload:Watching for file changes with StatReloader
