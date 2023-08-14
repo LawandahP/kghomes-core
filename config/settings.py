@@ -36,6 +36,8 @@ INSTALLED_APPS = [
     'properties',
     'units',
 
+
+    'corsheaders',
     'rest_framework',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -46,8 +48,11 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'config.middlewares.CustomAttributesMiddleware',
+    # 'config.middlewares.CustomAttributesMiddleware',
     'django.middleware.security.SecurityMiddleware',
+
+    'corsheaders.middleware.CorsMiddleware',
+
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -82,7 +87,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django_tenants.postgresql_backend',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': config('POSTGRES_DB'),
         'USER': config('POSTGRES_USER'),
         'HOST': config('POSTGRES_HOST'),
@@ -182,11 +187,11 @@ AUTHENTICATION_BACKENDS = (
 )
 
 REST_FRAMEWORK = {
-    # 'DEFAULT_AUTHENTICATION_CLASSES': [
-    #     'config.auth.CustomBackend',
-    #     'rest_framework_simplejwt.authentication.JWTAuthentication',
-    #     # 'rest_framework.authentication.SessionAuthentication'
-    # ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'config.auth.CustomBackend',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication'
+    ],
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
@@ -200,3 +205,7 @@ REST_FRAMEWORK = {
 
 ALGORITHM = config('ALGORITHM')
 SIGNING_KEY = config('JWT_SECRET')
+
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
+

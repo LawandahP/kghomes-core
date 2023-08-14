@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Property, Kind, Type, Amenities
+from .models import Property
 # Register your models here.
 
 
@@ -7,7 +7,7 @@ from .models import Property, Kind, Type, Amenities
 
 
 class PropertyAdmin(admin.ModelAdmin):
-    list_display = ["id", "name", "address", "owner", "property_kind", "property_type"]
+    list_display = ["id", "name", "address", "owner", "property_type"]
     list_filter = ('owner',)
     
     ordering = ["id"]
@@ -26,6 +26,4 @@ class PropertyAdmin(admin.ModelAdmin):
     # )
 
 admin.site.register(Property, PropertyAdmin)
-admin.site.register(Kind)
-admin.site.register(Type)
-admin.site.register(Amenities)
+

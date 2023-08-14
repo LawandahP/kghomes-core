@@ -1,56 +1,46 @@
+import json
 from rest_framework import serializers
 # from unit.serializers import UnitSerializer
 
-from .models import Amenities, Property, Type, Kind
-
-
-class PropertyKindSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Kind
-        fields = ['name']
-
-class PropertyTypeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Type
-        fields = ['name']
-
-
-# Amenities
-class AmenitiesSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Amenities
-        fields = [
-            'id', 'name',
-        ]
-      
-    def create(self, validated_data):
-        request = self.context['request']
-        name = self.validated_data['name']
-        amenities = Amenities.objects.create(**validated_data)
-        # audit(request=request, action_flag=f"Amenity {name} Created")
-        return amenities
+from utils.utils import logger
+from .models import Property
 
 
 class PropertySerializer(serializers.ModelSerializer):
     # amenities = serializers.StringRelatedField(many=True, read_only=True)
     # images = FilesSerializer(many=True, read_only=True)
+    amenities = serializers.JSONField()
     class Meta:
         model = Property
         fields = [
-            'id', 'slug', 'name', 'address', 'owner', 'property_type', 'account',
+            'id', 'slug', 'latlng', 'bounds', 'address', 'name', 'owner', 'account', 'amenities', 'property_type'
         ]
         read_only_fields = [
             "units",
             "id",
             "slug",
         ]
-
-    def create(self, validated_data):        
+    
+    def create(self, validated_data):
         request = self.context['request']
-        name = self.validated_data['name']
-        property = Property.objects.create(**validated_data)
-        # audit(request=request, action_flag=f"Property {name} Created")
-        return property
+        location = validated_data.pop('address')
+
+        owner = validated_data.pop('owner')
+        del owner['account']
+
+        logger.critical(owner)
+        
+        property_type = request.data["category"]
+        address = location["address"]
+
+        return Property.objects.create(
+            **validated_data, 
+            owner=owner,
+            address=address, 
+            property_type=property_type
+        )
+
+    
 
 #   class MaintenanceAdminSerializer(serializers.ModelSerializer):
 #     # images = FilesSerializer(many=True, required=False)
@@ -103,8 +93,8 @@ class PropertyDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Property
         fields = [ 
-            'id', 'slug', 'name', 'address', 'amenities', 
-            'address', 'owner', 'property_kind', 'property_type', 'account'
+            'id', 'slug', 'name', 'latlng', 'bounds', 'address', 'amenities', 
+            'address', 'owner', 'property_type', 'account'
             ]
         read_only_fields = [ "id", "slug", "amenities"]
 
@@ -114,37 +104,6 @@ class PropertyUpdateSerializer(serializers.ModelSerializer):
         model = Property
         fields = ['id', 'slug', 'name', 'address', 'amenities', 'address', 'owner', 'kind', 'type', 'images']
         read_only_fields = [ "id", "slug", "amenities", "images" ]
-
-
-        
-
-class AmenitiesResponseSerializer(serializers.Serializer):
-    name = serializers.SerializerMethodField(read_only=True)
-
-    class Meta:
-        model = Amenities
-        fields = ['name']
-                                                                                                                
-    def get_name(self, instance):
-        # return [amenity.name for amenity in instance]
-        return [instance.name]
-
-
-
-#  Property Type Serializer
-class TypeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Type
-        fields = [
-            'id', 'kind', 'name'
-        ]
-
-    def create(self, validated_data):
-        request = self.context['request']
-        # name = self.validated_data['property_model']
-        property = Type.objects.create(**validated_data)
-        # audit(request=request, action_flag=f"Property model {name} Created")
-        return property
 
 
 # Joint Serializer

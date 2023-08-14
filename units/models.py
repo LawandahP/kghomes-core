@@ -1,30 +1,63 @@
-# from django.db import models
+from django.db import models
 
-# # Create your models here.
-# import uuid
+# Create your models here.
+import uuid
 
-# from django.db.models.signals import pre_save, post_save
-# from django.dispatch import receiver
+from django.db.models.signals import pre_save, post_save
+from django.dispatch import receiver
+from django.utils.translation import gettext_lazy as _
 
-# from django.db import models
-# from accounts.models import CustomUUIDField
-# # from properties.models import Property
-# from users.models import User
 
-# class Unit(models.Model):
-#     id = CustomUUIDField()
-#     unit_no          = models.CharField(max_length=255)
-#     square_feet      = models.CharField(max_length=255, blank=True, null=True)
-#     bedrooms         = models.IntegerField()
-#     bathrooms        = models.IntegerField()
-#     # property         = models.ForeignKey(Property, related_name="units", on_delete=models.CASCADE, blank=True, null=True)
-#     # previous_tenants = models.ManyToManyField(Tenant, related_name="previous_tenants", blank=True)
-#     # images           = models.ManyToManyField(Files, blank=True)
-#     tenant           = models.OneToOneField(User, related_name="occupant", unique=True, on_delete=models.SET_NULL, blank=True, null=True)
-#     slug             = models.SlugField(blank=True, null=False)
+from django.db import models
+from properties.models import Property
 
-#     def __str__(self):
-#         return self.unit_no
+from utils.utils import CustomUUIDField
+# from properties.models import Property
 
-#     class Meta:
-#         db_table="units"
+UNIT_TYPE_CHOICES = [
+    ('1+ Bedrooms', _('1+ Bedrooms')),
+    ('Studio', _('Studio')),
+    ('Single Room', _('Single Room')),
+    ('Shop', _('Shop')),
+    ('Office', _('Office')),
+    ('Warehouse', _('Warehouse')),
+    ('Garage', _('Garage')),
+    ('Restaurant', _('Restaurant')),
+    ('Clinic', _('Clinic')),
+    # Add more choices as needed
+]
+
+class Units(models.Model):
+    id               = CustomUUIDField()
+    unit_number      = models.CharField(max_length=255)
+    size             = models.DecimalField(max_digits=8, decimal_places=2)
+    bedrooms         = models.IntegerField()
+    bathrooms        = models.IntegerField()
+    amenities        = models.JSONField(blank=True, null=True)
+    monthly_rent     = models.DecimalField(max_digits=8, decimal_places=2, null=True)
+    unit_type        = models.CharField(max_length=50, choices=UNIT_TYPE_CHOICES, blank=True, null=True)
+    property         = models.ForeignKey(Property, related_name="units", on_delete=models.CASCADE, blank=True, null=True)
+    account          = models.CharField(max_length=100, blank=True)
+    # images           = models.ManyToManyField(Files, blank=True)
+
+    def __str__(self):
+        return self.unit_number
+
+    class Meta:
+        db_table="units"
+
+
+class Assignment(models.Model):
+    id               = CustomUUIDField()
+    tenant           = models.JSONField()
+    unit             = models.ForeignKey(Units, on_delete=models.CASCADE)
+    assigned_date    = models.DateTimeField(auto_now_add=True)
+    monthly_rent     = models.DecimalField(max_digits=10, decimal_places=2)
+    notes            = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.unit.unit_number
+
+    class Meta:
+        db_table="unit_assignment"
+

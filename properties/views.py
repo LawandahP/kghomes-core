@@ -25,7 +25,7 @@ from rest_framework.parsers import FileUploadParser
 from utils.utils import CustomPagination, customResponse, logger
 
 
-from .models import Amenities, Property, Type
+from .models import Property
 from .filters import PropertyFilter
 # from files.models import Files
 
@@ -45,14 +45,14 @@ class PropertyCreateListView(generics.GenericAPIView):
     queryset = Property.objects.all()  # Set your queryset here
     pagination_class = CustomPagination
     serializer_class = PropertySerializer
-    authentication_classes = [CustomBackend]
-    permission_classes = [IsRealtor, ]
+    permission_classes = [IsRealtor]
+
     filterset_class = PropertyFilter
     search_fields = ['name']
 
 
     def get_object(self, request):
-        queryset = Property.objects.all()
+        queryset = Property.objects.filter(account=request.user["account"]["id"])
         filter = self.filter_queryset(queryset)
         properties = self.paginate_queryset(filter)
         return properties
@@ -60,7 +60,7 @@ class PropertyCreateListView(generics.GenericAPIView):
     def post(self, request):
         data = request.data
         user = request.user
-      
+        
         serializer = self.serializer_class(
             data=data, context={'request': request})
         if serializer.is_valid():
@@ -70,7 +70,7 @@ class PropertyCreateListView(generics.GenericAPIView):
             
             return customResponse(
                 payload=serializer.data,
-                success=f"Property {name} Registered Successfully💯",
+                message=f"Property {name} Registered Successfully.",
                 status=status.HTTP_201_CREATED
             )
         error = {'detail': serializer.errors}
@@ -80,12 +80,12 @@ class PropertyCreateListView(generics.GenericAPIView):
     def get(self, request):
         try:
             properties = self.get_object(request)
-            count = Property.objects.count()
+            count = len(properties)
             serializer = PropertyDetailsSerializer(properties, many=True)
         except Http404 as e:
             error = {'detail': str(e)}
             return Response(error, status.HTTP_404_NOT_FOUND)
-        return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count)
+        return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count, success=True)
 
        
 
@@ -116,7 +116,7 @@ class PropertyDetailView(generics.GenericAPIView):
                 #     audit(request=request, action_flag=f"Updated {request.data} for Property {property.name}")
                 return customResponse(
                     payload=serializer.data,
-                    success=_("Property updated successfully"),
+                    message=_("Property updated successfully"),
                     status=status.HTTP_200_OK
                 )
         except Property.DoesNotExist:

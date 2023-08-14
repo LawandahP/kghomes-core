@@ -19,7 +19,6 @@ class PropertyFilter(filters.FilterSet):
     class Meta:
         model = Property
         fields = (
-            "owner",
             "property_type",
             "name"
         )
