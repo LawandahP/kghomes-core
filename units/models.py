@@ -9,6 +9,7 @@ from django.utils.translation import gettext_lazy as _
 
 
 from django.db import models
+from files.models import TimeStamps
 from properties.models import Property
 
 from utils.utils import CustomUUIDField
@@ -27,7 +28,7 @@ UNIT_TYPE_CHOICES = [
     # Add more choices as needed
 ]
 
-class Units(models.Model):
+class Units(TimeStamps):
     id               = CustomUUIDField()
     unit_number      = models.CharField(max_length=255)
     size             = models.DecimalField(max_digits=8, decimal_places=2)
@@ -47,7 +48,7 @@ class Units(models.Model):
         db_table="units"
 
 
-class Assignment(models.Model):
+class Assignment(TimeStamps):
     id               = CustomUUIDField()
     tenant           = models.JSONField()
     unit             = models.ForeignKey(Units, on_delete=models.CASCADE)

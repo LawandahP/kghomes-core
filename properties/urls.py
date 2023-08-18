@@ -9,7 +9,7 @@ from .views import PropertyCreateListView, PropertyDetailView, FileUploadView
 urlpatterns = [
     path('upload', FileUploadView.as_view(), name="csv"),
     path('properties/',           PropertyCreateListView.as_view(), name="create-property"),
-    path('properties/<str:slug>/', PropertyDetailView.as_view(),     name="property-detail"),
+    path('properties/<str:id>', PropertyDetailView.as_view(),     name="property-detail"),
 
     # path('my_properties/',  LandlordPropertyListView.as_view(), name="my-properties"),
 

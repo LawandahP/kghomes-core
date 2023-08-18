@@ -3,14 +3,14 @@ from django.template.defaultfilters import slugify
 
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
-
+from files.models import Files, TimeStamps
 
 from utils.utils import CustomUUIDField
 from utils.utils import create_uuid
 
+    
 
-
-class Property(models.Model):
+class Property(TimeStamps):
     id = CustomUUIDField()
     name = models.CharField(max_length=255, null=False, blank=False)
 
@@ -23,7 +23,7 @@ class Property(models.Model):
     amenities = models.JSONField(null=True, blank=True)
     
     slug = models.SlugField(blank=True, null=True)
-    # images = models.ManyToManyField(Files, blank=True, related_name="property_images")
+    images = models.ManyToManyField(Files, blank=True, related_name="property_images")
     owner = models.JSONField(blank=True, null=True)
     account = models.CharField(max_length=100, blank=True)
 

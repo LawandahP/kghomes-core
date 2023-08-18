@@ -1,5 +1,7 @@
+from concurrent.futures import ThreadPoolExecutor
 import csv
 import json
+import threading
 from django.http import Http404
 from django.shortcuts import render
 from django.contrib.auth import get_user_model
@@ -18,11 +20,12 @@ from rest_framework import status, generics
 from rest_framework.views import APIView
 from rest_framework.exceptions import ParseError
 from rest_framework.parsers import FileUploadParser
+from files.models import Files
 
 
 # from django_filters.rest_framework import FilterSet
 
-from utils.utils import CustomPagination, customResponse, logger
+from utils.utils import CustomPagination, compressImage, customResponse, logger
 
 
 from .models import Property
@@ -66,17 +69,42 @@ class PropertyCreateListView(generics.GenericAPIView):
         if serializer.is_valid():
             account = user["account"]["id"]
             name = data['name']
-            serializer.save(account=account)
+            property = serializer.save(account=account)
             
-            return customResponse(
-                payload=serializer.data,
-                message=f"Property {name} Registered Successfully.",
-                status=status.HTTP_201_CREATED
-            )
+            try:
+                with ThreadPoolExecutor(max_workers=3) as executor:
+                    executor.submit(self.imageWorker, request, property)
+                logger.info("Property images Compressed and Uploaded Successfully")
+                return customResponse(
+                    payload=serializer.data,
+                    message=f"Property {name} Registered Successfully.",
+                    status=status.HTTP_201_CREATED
+                )
+                
+            except Exception as e:
+                return Response({"error": f"An error occurred: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                     
+            
         error = {'detail': serializer.errors}
         return Response(error, status.HTTP_400_BAD_REQUEST)
 
-    
+    def imageWorker(self, request, property):
+        if request.FILES:
+            images_data = request.FILES.getlist("images")
+            files_list = []
+
+            for property_image in images_data:
+                compressed_image_io = compressImage(property_image)
+                logger.info("Compressed Image")  # Add this line to debug
+                files_list.append(Files(file_url=compressed_image_io))
+
+            if files_list:
+                images = Files.objects.bulk_create(files_list)
+                logger.info("Images Created")  # Add this line to debug
+                
+                for image in images:
+                    property.images.add(image.id)
+        
     def get(self, request):
         try:
             properties = self.get_object(request)
@@ -92,23 +120,23 @@ class PropertyCreateListView(generics.GenericAPIView):
 class PropertyDetailView(generics.GenericAPIView):
     serializer_class = PropertyDetailsSerializer
 
-    def get_object(self, request, slug):
-        return Property.objects.get(slug=slug)
+    def get_object(self, request, id):
+        return Property.objects.get(id=id)
 
     # @method_decorator(group_required('REALTOR', 'LANDLORD'))
-    def get(self, request, slug):
+    def get(self, request, id):
         try:
-            property = self.get_object(request, slug)
+            property = self.get_object(request, id)
             serializer = self.serializer_class(property, many=False)
-        except Exception as e:
-            error = {'detail': str(e)}
+        except Property.DoesNotExist:
+            error = {'detail': "Property not found"}
             return Response(error, status.HTTP_404_NOT_FOUND)
         return customResponse(payload=serializer.data, status=status.HTTP_200_OK)
 
     # @method_decorator(group_required('REALTOR'))
-    def patch(self, request, slug):
+    def patch(self, request, id):
         try:
-            property = self.get_object(request=request, slug=slug)
+            property = self.get_object(request=request, id=id)
             serializer = self.serializer_class(property, data=request.data, partial=True)
 
             if serializer.is_valid():
@@ -119,37 +147,23 @@ class PropertyDetailView(generics.GenericAPIView):
                     message=_("Property updated successfully"),
                     status=status.HTTP_200_OK
                 )
-        except Property.DoesNotExist:
             error = {'detail': serializer.errors}
-            return Response(error, status.HTTP_404_NOT_FOUND)
-            # return gitHomesResponse(error="Property you are trying to access does not exist", status=status.HTTP_200_OK)
-
-    # @method_decorator(group_required('REALTOR'))
-    def put(self, request, slug):
-        property = self.get_object(request=request, slug=slug)
-        data = request.data
-        serializer = PropertyUpdateSerializer(
-            instance=property, data=data, partial=True)
-
-        if serializer.is_valid():
-            serializer.save()
-            return customResponse(
-                payload=serializer.data,
-                success="Property updated successfully",
-                status=status.HTTP_200_OK
-            )
-        error = {'detail': serializer.errors}
-        return Response(error, status.HTTP_400_BAD_REQUEST)
-        
-    # @method_decorator(group_required('REALTOR'))
-    def delete(self, request, slug):
-        try:
-            property = self.get_object(request=request, slug=slug)
-            property.delete()
+            return Response(error, status.HTTP_400_BAD_REQUEST)
         except Property.DoesNotExist:
-            error = {'detail': ["Property Not Found"]}
+            error = {'detail': "Property not found"}
             return Response(error, status.HTTP_404_NOT_FOUND)
-        return customResponse(success="Property deleted successfully", status=status.HTTP_200_OK)
+
+   
+    # @method_decorator(group_required('REALTOR'))
+    def delete(self, request, id):
+        try:
+            property = self.get_object(request=request, id=id)
+            property.delete()
+            return customResponse(success="Property deleted successfully", status=status.HTTP_200_OK)
+        except Property.DoesNotExist:
+            error = {'detail': "Property Not Found"}
+            return Response(error, status.HTTP_404_NOT_FOUND)
+        
 
 
 
@@ -205,3 +219,8 @@ class FileUploadView(APIView):
             success="Data Successfully Uploaded",
             status=status.HTTP_201_CREATED
         )
+
+
+
+
+

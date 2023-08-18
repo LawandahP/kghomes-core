@@ -1,5 +1,7 @@
 import json
 from rest_framework import serializers
+from files.models import Files
+from files.serializers import FilesSerializer
 # from unit.serializers import UnitSerializer
 
 from utils.utils import logger
@@ -8,12 +10,13 @@ from .models import Property
 
 class PropertySerializer(serializers.ModelSerializer):
     # amenities = serializers.StringRelatedField(many=True, read_only=True)
-    # images = FilesSerializer(many=True, read_only=True)
+    images = FilesSerializer(many=True, read_only=True)
     amenities = serializers.JSONField()
     class Meta:
         model = Property
         fields = [
-            'id', 'slug', 'latlng', 'bounds', 'address', 'name', 'owner', 'account', 'amenities', 'property_type'
+            'id', 'slug', 'latlng', 'bounds', 'address', 'name', 'images',
+            'owner', 'account', 'amenities', 'property_type'
         ]
         read_only_fields = [
             "units",
@@ -27,11 +30,14 @@ class PropertySerializer(serializers.ModelSerializer):
 
         owner = validated_data.pop('owner')
         del owner['account']
-
-        logger.critical(owner)
         
         property_type = request.data["category"]
-        address = location["address"]
+
+
+        if location:
+            address = location["address"]
+        else:
+            address = None
 
         return Property.objects.create(
             **validated_data, 
@@ -89,12 +95,13 @@ class PropertySerializer(serializers.ModelSerializer):
 
 
 class PropertyDetailsSerializer(serializers.ModelSerializer):
- 
+    images = FilesSerializer(many=True, read_only=True)
+
     class Meta:
         model = Property
         fields = [ 
             'id', 'slug', 'name', 'latlng', 'bounds', 'address', 'amenities', 
-            'address', 'owner', 'property_type', 'account'
+            'address', 'owner', 'property_type', 'images', 'account'
             ]
         read_only_fields = [ "id", "slug", "amenities"]
 
@@ -102,7 +109,7 @@ class PropertyDetailsSerializer(serializers.ModelSerializer):
 class PropertyUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Property
-        fields = ['id', 'slug', 'name', 'address', 'amenities', 'address', 'owner', 'kind', 'type', 'images']
+        fields = ['id', 'slug', 'name', 'latlng', 'bounds', 'address', 'amenities', 'address', 'owner', 'images']
         read_only_fields = [ "id", "slug", "amenities", "images" ]
 
 

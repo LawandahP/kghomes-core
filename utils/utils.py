@@ -126,14 +126,46 @@ def convertDate(date):
 def convertToMonth(date):
     return date.strftime("%B, %Y")
 
+    
+    
 def compressImage(file):
     img = Image.open(file)
+    
+    # Convert palette mode (mode P) to RGB mode
+    if img.mode == 'RGBA':
+        img = img.convert('RGB')
+    else:
+        if img.mode == 'P':
+            img = img.convert('RGB')
+    
     thumb_io = BytesIO()
-    img.save(thumb_io, "jpeg", quality=80)
-    new_image = InMemoryUploadedFile(thumb_io, None, 'foo.jpeg', 'image/jpeg', thumb_io.tell(), None)
-    return new_image
+    img.save(thumb_io, format="JPEG", quality=80)
+    thumb_io.seek(0)  # Reset the stream position
+    
+    # Create a new InMemoryUploadedFile with the compressed image data
+    compressed_image = InMemoryUploadedFile(
+        file=thumb_io,
+        field_name=None,  # Specify the field name if applicable
+        name=file.name,
+        content_type="image/jpeg",
+        size=thumb_io.tell(),
+        charset=None,
+    )
+    
+    return compressed_image
 
 
+
+
+
+
+def compress_image(image):
+    img = Image.open(image)
+    # Perform image compression logic here...
+    compressed_io = BytesIO()
+    img.save(compressed_io, format='JPEG', quality=70)
+    compressed_io.seek(0)
+    return compressed_io
 
 def sendRegisterEmail(data):
     url = settings.REGISTER_EMAIL_URL

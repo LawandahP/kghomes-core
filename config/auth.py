@@ -29,7 +29,6 @@ class CustomBackend(BaseBackend):
         token = request.META.get('HTTP_AUTHORIZATION').split(' ')[1] if 'HTTP_AUTHORIZATION' in request.META else None
 
         logger.info("Custom Backed Hit Successfully")
-        logger.info(token)
         
         if not token:
             logger.error('Authentication failed: Token not provided.')
@@ -47,9 +46,6 @@ class CustomBackend(BaseBackend):
                     headers = {'Authorization': f'Bearer {token}'}
                     res = requests.get('http://backend-auth:8001/api/v1/current_user/', headers=headers)
                     user = res.json()
-
-                    logger.info(user)
-
                     if res.status_code == 200:
                         logger.info("USER AUTHENTICATED SUCCESSFULLY")
                         user['data']['payload']['is_authenticated'] = True
