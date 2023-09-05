@@ -1,0 +1,21 @@
+# Use an official Python runtime as a parent image
+FROM python:3.10-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED 1
+
+# Create and set the working directory
+WORKDIR /usr/src/app
+
+# Install Python dependencies for Celery
+COPY ./requirements.txt /usr/src/celery/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the Celery configuration
+COPY . /usr/src/app
+
+# Expose the port if needed
+EXPOSE 8003
+
+# Start the Celery worker
+CMD celery -A config worker -l INFO && celery -A config beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler

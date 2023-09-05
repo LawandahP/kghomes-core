@@ -37,7 +37,9 @@ INSTALLED_APPS = [
     'properties',
     'units',
     'files',
+    'leases',
     'cloudinary_storage',
+    'django_celery_beat',
 
     'corsheaders',
     'rest_framework',
@@ -229,3 +231,12 @@ CLOUDINARY_STORAGE = {
     'API_KEY': config('CLOUDINARY_API_KEY'),
     'API_SECRET': config('CLOUDINARY_API_SECRET')
 }
+
+
+# celery configuration
+# Configure Celery to use the shared Celery worker container
+# CELERY_broker_url = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
+# result_backend = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
+
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
+result_backend = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")

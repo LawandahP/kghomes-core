@@ -21,6 +21,7 @@ from rest_framework.views import APIView
 from rest_framework.exceptions import ParseError
 from rest_framework.parsers import FileUploadParser
 from files.models import Files
+from properties.utils import imageWorker
 
 
 # from django_filters.rest_framework import FilterSet
@@ -43,6 +44,10 @@ from django.http import JsonResponse
 from config.auth import CustomBackend
 
 fs = FileSystemStorage(location='tmp/')
+
+
+
+
 
 class PropertyCreateListView(generics.GenericAPIView):
     queryset = Property.objects.all()  # Set your queryset here
@@ -73,7 +78,7 @@ class PropertyCreateListView(generics.GenericAPIView):
             
             try:
                 with ThreadPoolExecutor(max_workers=3) as executor:
-                    executor.submit(self.imageWorker, request, property)
+                    executor.submit(imageWorker, request, property)
                 logger.info("Property images Compressed and Uploaded Successfully")
                 return customResponse(
                     payload=serializer.data,
@@ -82,28 +87,11 @@ class PropertyCreateListView(generics.GenericAPIView):
                 )
                 
             except Exception as e:
-                return Response({"error": f"An error occurred: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                     
-            
+                return Response({"detail": f"An error occurred: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         error = {'detail': serializer.errors}
         return Response(error, status.HTTP_400_BAD_REQUEST)
 
-    def imageWorker(self, request, property):
-        if request.FILES:
-            images_data = request.FILES.getlist("images")
-            files_list = []
-
-            for property_image in images_data:
-                compressed_image_io = compressImage(property_image)
-                logger.info("Compressed Image")  # Add this line to debug
-                files_list.append(Files(file_url=compressed_image_io))
-
-            if files_list:
-                images = Files.objects.bulk_create(files_list)
-                logger.info("Images Created")  # Add this line to debug
-                
-                for image in images:
-                    property.images.add(image.id)
+    
         
     def get(self, request):
         try:
@@ -113,7 +101,7 @@ class PropertyCreateListView(generics.GenericAPIView):
         except Http404 as e:
             error = {'detail': str(e)}
             return Response(error, status.HTTP_404_NOT_FOUND)
-        return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count, success=True)
+        return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count, message=True)
 
        
 
@@ -150,7 +138,7 @@ class PropertyDetailView(generics.GenericAPIView):
             error = {'detail': serializer.errors}
             return Response(error, status.HTTP_400_BAD_REQUEST)
         except Property.DoesNotExist:
-            error = {'detail': "Property not found"}
+            error = {'detail': _("Property not found")}
             return Response(error, status.HTTP_404_NOT_FOUND)
 
    
@@ -159,12 +147,11 @@ class PropertyDetailView(generics.GenericAPIView):
         try:
             property = self.get_object(request=request, id=id)
             property.delete()
-            return customResponse(success="Property deleted successfully", status=status.HTTP_200_OK)
+            return customResponse(message=_("Property deleted successfully"), status=status.HTTP_200_OK)
         except Property.DoesNotExist:
-            error = {'detail': "Property Not Found"}
+            error = {'detail': _("Property Not Found")}
             return Response(error, status.HTTP_404_NOT_FOUND)
         
-
 
 
 
@@ -216,7 +203,7 @@ class FileUploadView(APIView):
         # Save the instances to the database
         Property.objects.bulk_create(instances)
         return customResponse(
-            success="Data Successfully Uploaded",
+            message="Data Successfully Uploaded",
             status=status.HTTP_201_CREATED
         )
 

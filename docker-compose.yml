@@ -12,9 +12,9 @@ services:
         ports:
             - "8002:8002"
         environment:
-            # - DEBUG=1
-            # - CELERY_BROKER=redis://redis:6379/0
-            # - CELERY_BACKEND=redis://redis:6379/0
+            - DEBUG=1
+            - CELERY_BROKER=redis://redis:6379/0
+            - CELERY_BACKEND=redis://redis:6379/0
             - POSTGRES_DB=$POSTGRES_DB
             - POSTGRES_USER=$POSTGRES_USER
             - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
@@ -22,6 +22,45 @@ services:
             - POSTGRES_HOST=$POSTGRES_HOST
         networks:
             - voldermort-net
+
+    celery-worker:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: celery-worker
+        command: sh -c "celery -A config worker -l INFO"
+        restart: on-failure
+        volumes:
+            - .:/usr/src/app
+        environment:
+            - DEBUG=1
+            - CELERY_BROKER=redis://redis:6379/0
+            - CELERY_BACKEND=redis://redis:6379/0
+        depends_on:
+            - backend-core
+            - redis
+
+    celery-beat:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: celery-beat
+        command: sh -c "celery -A config beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+        restart: on-failure
+        volumes:
+            - .:/usr/src/app
+        depends_on:
+            - celery-worker
+            - backend-core
+            - redis
+
+    redis:
+        image: "redis:latest"
+        container_name: redis
+        restart: unless-stopped
+        ports:
+            - "6379:6379"
+
 
 networks:
     voldermort-net:
