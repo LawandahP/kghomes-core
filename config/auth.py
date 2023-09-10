@@ -44,7 +44,7 @@ class CustomBackend(BaseBackend):
                 # Try to retrieve the user with the given user_id
                 try:
                     headers = {'Authorization': f'Bearer {token}'}
-                    res = requests.get('http://backend-auth:8001/api/v1/current_user/', headers=headers)
+                    res = requests.get(settings.AUTH_BACKEND, headers=headers)
                     user = res.json()
                     if res.status_code == 200:
                         logger.info("USER AUTHENTICATED SUCCESSFULLY")

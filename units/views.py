@@ -3,7 +3,6 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 
 from django.utils.translation import gettext_lazy as _
-from leases.tasks import createRecurringBill
 from units.serializers import UnitAssignmentSerializer, UnitSerializer
 from units.models import Assignment, Units
 from utils.utils import customResponse, logger
@@ -44,7 +43,6 @@ class CreatViewUnits(generics.GenericAPIView):
     
     
     def get(self, request):
-        createRecurringBill()
         try:
             units = self.get_object(request)
             count = len(units)
@@ -142,6 +140,16 @@ class AssignUnitToTenant(generics.GenericAPIView):
             error = {'detail': _("Unit not found")}
             return Response(error, status.HTTP_404_NOT_FOUND)
         
+    def get(self, request, id):
+        try:
+            unit = self.get_object(request, id)
+            assignments = Assignment.objects.filter(unit=unit)
+            serializer = self.serializer_class(assignments, many=True)
+        except Units.DoesNotExist:
+            error = {'detail': _("Unit not found")}
+            return Response(error, status.HTTP_404_NOT_FOUND)
+        return customResponse(payload=serializer.data, status=status.HTTP_200_OK)
+    
     def patch(self, request, id):
         try:
             unit = self.get_object(request, id)

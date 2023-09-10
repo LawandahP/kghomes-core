@@ -182,6 +182,8 @@ def sendRegisterEmail(data):
     return response.json()
 
 
+
+
 if __name__ == '__main__':
     CustomUUIDField()
     sendRegisterEmail()

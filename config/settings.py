@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'units',
     'files',
     'leases',
+    'bff',
     'cloudinary_storage',
     'django_celery_beat',
 
@@ -240,3 +241,16 @@ CLOUDINARY_STORAGE = {
 
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
 result_backend = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
+
+AUTH_BACKEND = "http://backend-auth:8001/api/v1/current_user/"
+
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://redis:6379/0',  # Replace with your Redis server information
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}

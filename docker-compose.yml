@@ -5,7 +5,7 @@ services:
         build:
             context: .
         # image: voldermort/kghomes:v1
-        container_name: kghomesV2_core
+        container_name: backend-core
         volumes:
             - .:/usr/src/app
         restart: on-failure

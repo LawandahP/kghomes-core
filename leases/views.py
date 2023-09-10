@@ -47,6 +47,7 @@ class CreatViewLease(generics.GenericAPIView):
 
             # after creating lease create a CrontabTask that will run every month
             
+            
             return customResponse(
                 payload=serializer.data,
                 message=_("Lease Created Successfully."),
