@@ -3,24 +3,23 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 
 from django.utils.translation import gettext_lazy as _
+from units.filters import UnitFilter
 from units.serializers import UnitAssignmentSerializer, UnitSerializer
 from units.models import Assignment, Units
-from utils.utils import customResponse, logger
+from utils.utils import CustomPagination, customResponse
 
 
 class CreatViewUnits(generics.GenericAPIView):
     serializer_class = UnitSerializer
+    filterset_class = UnitFilter
+    pagination_class = CustomPagination
+    search_fields = ['unit_number']
 
     def get_object(self, request):
-        property_id = request.GET.get('property_id')
-
-        if property_id:
-            queryset = Units.objects.filter(account=request.user["account"]["id"], property=property_id)
-        else:
-            queryset = Units.objects.filter(account=request.user["account"]["id"])
-        # filter = self.filter_queryset(queryset)
-        # properties = self.paginate_queryset(filter)
-        return queryset
+        queryset = Units.objects.filter(account=request.user["account"]["id"])
+        filter = self.filter_queryset(queryset)
+        units = self.paginate_queryset(filter)
+        return units
 
     
     def post(self, request):

@@ -1,22 +1,20 @@
-
-from django.urls import reverse
 import requests
-
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
-from utils.utils import customResponse, logger
 from units.views import AssignUnitToTenant
 # Create your views here.
 
 @api_view(['GET'])
 def getAssignments(request, id):
+    current_assignment = request.GET.get("assignment", False)
+
     token = request.META.get('HTTP_AUTHORIZATION').split(' ')[1] if 'HTTP_AUTHORIZATION' in request.META else None
     assignment_instance = AssignUnitToTenant()
     assignments = assignment_instance.get(request, id)
 
     if assignments.status_code != 200:
-        return Response({"error": "Could not retrieve the list of assignments"}, status=assignments.status_code)
+        return Response({"detail": "Could not retrieve the list of assignments"}, status=assignments.status_code)
     else:
         results = []
         for item in assignments.data['data']['payload']:
@@ -34,7 +32,11 @@ def getAssignments(request, id):
                     tenant_data = tenant_response.json()
                     del item["tenant"]
                     item['tenant'] = tenant_data["data"]["payload"]  # Add tenant data to the payload item
-                    results.append(item)
+                    # results.append(item)
+                    if current_assignment == "current" and 'vacated_date' in item and item['vacated_date'] is None:
+                        results.append(item)
+                    elif not current_assignment:
+                        results.append(item)
                 else:
                     # Handle errors from the API call
                     return Response({"detail": "Could not retrieve tenant data"}, status=404)

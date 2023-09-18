@@ -39,7 +39,7 @@ class Lease(TimeStamps):
     due_day          = models.IntegerField(null=True)
     start_date       = models.DateField(blank=True, null=True)
     end_date         = models.DateField(blank=True, null=True)
-    file             = models.ForeignKey(Files, on_delete=models.CASCADE)
+    file             = models.ForeignKey(Files, on_delete=models.CASCADE, null=True, blank=True)
     account          = models.CharField(max_length=50)
 
     def __str__(self):

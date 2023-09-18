@@ -24,16 +24,16 @@ class LeaseSerializer(serializers.ModelSerializer):
             "account"
         ]
 
-    def create(self, validated_data):
-        request = self.context['request']
+    # def create(self, validated_data):
+    #     request = self.context['request']
 
-        tenant = validated_data.pop('tenant')
-        del tenant['account']
+    #     tenant = validated_data.pop('tenant')
+    #     del tenant['account']
 
-        return Lease.objects.create(
-            **validated_data, 
-            tenant=tenant,
-        )
+    #     return Lease.objects.create(
+    #         **validated_data, 
+    #         tenant=tenant,
+    #     )
     
     # def to_representation(self, instance):
     #     response = super().to_representation(instance)
