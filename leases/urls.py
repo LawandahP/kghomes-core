@@ -1,8 +1,12 @@
 from django.urls import path
 
-from leases.views import CreatViewLease
+from leases.views import CreatViewLease, LeaseDetailView, CreateInvoiceView, InvoiceDetailView
 
 
 urlpatterns = [
-    path('leases/',  CreatViewLease.as_view(), name="images"),
+    path('leases/',  CreatViewLease.as_view(), name="leases"),
+    path('lease-details/<str:id>', LeaseDetailView.as_view(), name="lease_details"),
+
+    path('invoices/',  CreateInvoiceView.as_view(), name="invoices"),
+    path('invoice/<int:id>', InvoiceDetailView.as_view(), name="invoices-detail")    
 ]

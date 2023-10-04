@@ -27,9 +27,6 @@ class PropertySerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         request = self.context['request']
         location = validated_data.pop('address')
-
-        owner = validated_data.pop('owner')
-        del owner['account']
         
         property_type = request.data["category"]
 
@@ -41,7 +38,6 @@ class PropertySerializer(serializers.ModelSerializer):
 
         return Property.objects.create(
             **validated_data, 
-            owner=owner,
             address=address, 
             property_type=property_type
         )

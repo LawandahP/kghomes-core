@@ -32,12 +32,11 @@ def create_monthly_invoices():
                 total_amount=lease.rent,  # Use the rent amount from the lease
                 payment_status=Invoice.UNPAID,  # Set the initial payment status
             )
-            rent_bill = Bills.objects.create(
+            Bills.objects.create(
                 lease=lease,
                 invoice=new_invoice,
                 item=_("Rent"),
                 description=_(f"Rent payment for ")
-                
             )
 
 

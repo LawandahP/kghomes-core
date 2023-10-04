@@ -239,11 +239,14 @@ CLOUDINARY_STORAGE = {
 # CELERY_broker_url = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
 # result_backend = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
 
-CELERY_BROKER_URL = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
-result_backend = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER", "redis://localhost:6379/0")
+result_backend = os.environ.get("CELERY_BROKER", "redis://localhost:6379/0")
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True  # or False
 
-AUTH_BACKEND = "http://backend-auth:8001/api/v1/current_user/"
 
+# AUTH_BACKEND = "http://backend-auth:8001/api/v1/current_user/"
+AUTH_BACKEND = "http://localhost:8001/api/v1/current_user/"
+AUTH_BASE_URL = "http://localhost:8001/api/v1"
 
 CACHES = {
     'default': {

@@ -10,9 +10,17 @@ from units.models import Units
 
 from utils.utils import CustomUUIDField, convertToMonth
 
+ACTIVE = 'Active'
+EXPIRED = 'Expired'
+
 TERMS = [
     ('Fixed Term', _('Fixed Term')),
     ('Month-To-Month', _('Month-To-Month')),
+]
+
+LEASE_STATUS = [
+    (ACTIVE, _('Active')),
+    (EXPIRED, _('Expired'))
 ]
 
 FREQUENCY = [
@@ -41,9 +49,10 @@ class Lease(TimeStamps):
     end_date         = models.DateField(blank=True, null=True)
     file             = models.ForeignKey(Files, on_delete=models.CASCADE, null=True, blank=True)
     account          = models.CharField(max_length=50)
+    status           = models.CharField(choices=LEASE_STATUS, default=ACTIVE)
 
     def __str__(self):
-        return self.property
+        return self.tenant
 
     class Meta:
         db_table = 'leases'
@@ -55,25 +64,26 @@ def post_lease_signal(sender, instance, created, *args, **kwargs):
         # ? If Lease is first created create Invoice
         invoice = Invoice.objects.create(
             lease=instance,
+            property=instance.property,
+            unit=instance.unit,
             tenant=instance.tenant,
-            due_date=instance.first_rent_date,
             total_amount=instance.rent,
-            payment_status="Unpaid"
+            due_on=instance.first_rent_date,
+            payment_status="Unpaid",
+            account = instance.property.account
         )
         invoice.save()
 
+
         bill = Bills.objects.create(
-            lease=instance,
             invoice=invoice,
             item="Rent",
-            description=f'Rent for {convertToMonth(invoice.due_on)}',
+            description=f'Rent for {convertToMonth(instance.first_rent_date)}',
             quantity=1,
             rate=instance.rent,
         )
 
         bill.save()
-
-# lease = models.ForeignKey(Lease, on_delete=models.CASCADE, related_name='leaseBills')
 
 
     
@@ -88,15 +98,38 @@ class Invoice(TimeStamps):
         (UNPAID, 'Unpaid'),
         (PARTIAL, 'Partial'),
     ]
+
+    CHECK = 'Check'
+    CASH = 'Cash'
+    MPESA = 'Mpesa'
+    BANK = 'Bank'
+
+    PAYMENT_METHOD = [
+        (CHECK, 'Check'),
+        (CASH, 'Cash'),
+        (MPESA, 'Mpesa'),
+        (BANK, 'Bank')
+    ]
+
+
     lease = models.ForeignKey(Lease, on_delete=models.CASCADE, related_name='invoices')
+    property = models.ForeignKey(Property, on_delete=models.CASCADE)
+    unit = models.ForeignKey(Units, on_delete=models.CASCADE)
     tenant = models.CharField(max_length=100, null=True)
-    invoice_date = models.DateTimeField(auto_now_add=True)
-    due_date = models.DateField()
+    
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    due_on = models.DateField()
+
+    amount_paid = models.IntegerField(blank=True, null=True, default=0)
+    paid_on = models.DateTimeField(blank=True, null=True)
+    payment_method = models.CharField(blank=True, null=True, choices=PAYMENT_METHOD, max_length=255)
+    balance = models.IntegerField(blank=True, null=True)
     payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default=UNPAID)
 
+    account = models.CharField(max_length=50)
+
     def __str__(self):
-        return f"Invoice for Lease {self.lease}"
+        return self.tenant
 
     class Meta:
         db_table = 'invoices'
@@ -105,7 +138,6 @@ class Invoice(TimeStamps):
 
 
 class Bills(TimeStamps):
-    lease = models.ForeignKey(Lease, on_delete=models.CASCADE, related_name='leaseBills')
     invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, related_name='invoiceBills', null=True)
     item = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)

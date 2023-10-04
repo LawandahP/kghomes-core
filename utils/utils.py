@@ -123,8 +123,9 @@ def phone_number_validator(value):
 def convertDate(date):
     return date.strftime("%a, %B %d, %Y")
 
-def convertToMonth(date):
-    return date.strftime("%B, %Y")
+def convertToMonth(date_str):
+    date = datetime.strptime(date_str, "%Y-%m-%d")
+    return datetime.strftime(date, "%B, %Y")
 
     
     
