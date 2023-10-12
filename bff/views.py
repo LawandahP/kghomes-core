@@ -5,6 +5,7 @@ from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
+from leases.views import CreateInvoiceView
 from units.views import AssignUnitToTenant
 # Create your views here.
 
@@ -53,4 +54,8 @@ def getAssignments(request, id):
 
 @api_view(['GET'])
 def getInvoicesBff(request, id):
-    pass
+    instance = CreateInvoiceView()
+    getInvoices = instance.get(request, id)
+
+    if getInvoices.status_code != 200:
+        return Response({"detail": "Could not retrieve the list of invoices"}, status=getInvoices.status_code)

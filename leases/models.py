@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.db.models.signals import post_save, pre_save, post_delete
@@ -9,6 +10,10 @@ from properties.models import Property
 from units.models import Units
 
 from utils.utils import CustomUUIDField, convertToMonth
+
+
+current_date_time = datetime.now().date()
+
 
 ACTIVE = 'Active'
 EXPIRED = 'Expired'
@@ -69,7 +74,7 @@ def post_lease_signal(sender, instance, created, *args, **kwargs):
             tenant=instance.tenant,
             total_amount=instance.rent,
             due_on=instance.first_rent_date,
-            payment_status="Unpaid",
+            status=Invoice.UNPAID,
             account = instance.property.account
         )
         invoice.save()
@@ -89,14 +94,16 @@ def post_lease_signal(sender, instance, created, *args, **kwargs):
     
 
 class Invoice(TimeStamps):
-    PAID = 'Paid'
+    PAID = 'Fully Paid'
     UNPAID = 'Unpaid'
-    PARTIAL = 'Partial'
+    PARTIAL = 'Partially Paid'
+    OVERDUE = 'Overdue'
 
     PAYMENT_STATUS_CHOICES = [
-        (PAID, 'Paid'),
+        (PAID, 'Fully Paid'),
         (UNPAID, 'Unpaid'),
-        (PARTIAL, 'Partial'),
+        (PARTIAL, 'Partially Paid'),
+        (OVERDUE, 'Overdue')
     ]
 
     CHECK = 'Check'
@@ -124,7 +131,7 @@ class Invoice(TimeStamps):
     paid_on = models.DateTimeField(blank=True, null=True)
     payment_method = models.CharField(blank=True, null=True, choices=PAYMENT_METHOD, max_length=255)
     balance = models.IntegerField(blank=True, null=True)
-    payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default=UNPAID)
+    status = models.CharField(max_length=100, choices=PAYMENT_STATUS_CHOICES, default=UNPAID)
 
     account = models.CharField(max_length=50)
 
@@ -138,7 +145,7 @@ class Invoice(TimeStamps):
 
 
 class Bills(TimeStamps):
-    invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, related_name='invoiceBills', null=True)
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='invoiceBills')
     item = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
     quantity = models.IntegerField()
@@ -155,4 +162,58 @@ class Bills(TimeStamps):
 @receiver(pre_save, sender=Bills)
 def pre_bills_signal(sender, instance, *args, **kwargs):
     instance.amount = instance.rate * instance.quantity
+
+@receiver(post_save, sender=Bills)
+def post_bills_signal(sender, instance, created, *args, **kwargs):
+    if created:
+        # ? If bill is created update parent invoice total_amount
+        amount = instance.amount
+        
+        invoice = instance.invoice
+
+        if invoice.total_amount:
+            invoice.total_amount = invoice.total_amount + int(amount)
+
+        if invoice.total_amount and invoice.balance is not None:
+            # invoice.total_amount = invoice.total_amount + int(amount)
+            #? if invoice balance is > 1 add bill amount😎💸💸
+            if invoice.balance is None:
+                invoice.balance = 0
+            if invoice.balance > 0:
+                invoice.balance = invoice.balance + amount
+            invoice.save()
+        invoice.save()
+    else:
+        # ? Find parent invoice and update total_amount
+        invoice = instance.invoice
+        bills_set = invoice.invoiceBills.all()
+        sum = 0
+        for bill in bills_set.iterator():
+            sum += bill.amount
+            invoice.total_amount = sum
+            invoice.save()
+
+            # ? Update invoice balance and status when bill is updated
+            if invoice.balance == None:
+                invoice.balance = 0
+                # invoice.save()
+            if invoice.balance > 0:
+                invoice.balance = invoice.total_amount - invoice.amount_paid
+                if invoice.total_amount != invoice.amount_paid:
+                    invoice.status = "Partially Paid"
+                elif invoice.total_amount != invoice.amount_paid:
+                    invoice.status = "Fully Paid"
+                    invoice.paid_on = current_date_time
+                invoice.save()
+
+
+@receiver(post_delete, sender=Bills)
+def post_delete_bills_signal(sender, instance, *args, **kwargs):
+    amount = instance.amount
+    invoice = instance.invoice
+    if invoice.total_amount:
+        invoice.total_amount = invoice.total_amount - amount
+        if invoice.balance and invoice.balance > 0:
+            invoice.balance = invoice.balance - amount
+        invoice.save()
 

@@ -1,22 +1,51 @@
 from datetime import datetime
+import json
+import math
+from django.conf import settings
 from django.http import Http404
 from django.utils.translation import gettext_lazy as _
+from rest_framework import serializers
+import requests  # Import HttpResponse for Django response
 
-
+from rest_framework.pagination import PageNumberPagination
 from rest_framework import generics, status
 from rest_framework.response import Response
+from bff.utils import UseAuthApi
+
 
 from files.models import Files
+from leases.filters import InvoiceFilter
 
 from .serializers import BillsSerializer, InvoiceDetailSerializer, InvoiceSerializer, LeaseDetailsSerializer, LeaseSerializer
 from leases.models import Bills, Invoice, Lease
 from utils.utils import customResponse, logger
 
 
+class CustomPaginator(PageNumberPagination):
+    page_size = 10
+    page_query_param = 'page'
+    page_size_query_param = 'size'
+
+    # def get_paginated_response(self, data):
+    #     response = super(CustomPaginator, self).get_paginated_response(data)
+    #     response.data['total_pages'] = self.page.paginator.num_pages
+        # return response
+    # def get_paginated_response(self, data):
+    #     return Response({
+    #         'links': {
+    #            'next': self.get_next_link(),
+    #            'previous': self.get_previous_link()
+    #         },
+    #         'count': self.page.paginator.count,
+    #         'total_pages': self.page.paginator.num_pages,
+    #         'results': data
+    #     })
+    # return self.get_paginated_response(self.paginate_queryset(serializer.data))
 
 
 class CreatViewLease(generics.GenericAPIView):
     serializer_class = LeaseSerializer
+    
 
     def get_object(self, request):
         queryset = Lease.objects.filter(account=request.user["account"]["id"])
@@ -115,13 +144,23 @@ class LeaseDetailView(generics.GenericAPIView):
 # Invoices
 
 class CreateInvoiceView(generics.GenericAPIView):
+    queryset = Invoice.objects.all()
     serializer_class = InvoiceSerializer
+    filterset_class = InvoiceFilter
+    search_fields = ['id']
+    pagination_class = CustomPaginator
+    # authentication_classes = []
+
+    
+    def get_all_invoices(self, request):
+        invoices = Invoice.objects.filter(account=request.user["account"]["id"])
+        return len(invoices)
 
     def get_object(self, request):
         queryset = Invoice.objects.filter(account=request.user["account"]["id"])
-        # filter = self.filter_queryset(queryset)
-        # properties = self.paginate_queryset(filter)
-        return queryset
+        filter = self.filter_queryset(queryset)
+        invoices = self.paginate_queryset(filter)
+        return invoices
 
 
     def post(self, request):
@@ -140,36 +179,80 @@ class CreateInvoiceView(generics.GenericAPIView):
 
     def get(self, request):
         try:
-            invoices = self.get_object(request)
-     
-            count = len(invoices)
-            serializer = InvoiceDetailSerializer(invoices, many=True)
+            totalCount = self.get_all_invoices(request)
+            page_size = request.GET.get("size", 10)
+            totalpages=math.ceil(totalCount/int(page_size))
+            
+            invoices = self.get_object(request)  # Assuming this returns a queryset of Django model objects
+            serializer = self.serializer_class(invoices, many=True)
+            
+            modified_invoices = []  # Create a list to store modified invoices
+
+            for invoice in serializer.data:
+                tenant_id = invoice["tenant"]  # Get the tenant ID from the serialized data
+
+                # Make an API request to fetch tenant data based on tenant_id
+                try:
+                    useAuthApi = UseAuthApi("user-details")
+                    tenantData = useAuthApi.fetchUserDetails(tenant_id)
+                    invoice['tenant'] = tenantData
+                    modified_invoices.append(invoice)
+                except:
+                    modified_invoices.append(invoice)
+
+            count = len(modified_invoices)
+            
+            
+            filteredPages=math.ceil(count/int(page_size)) 
             return customResponse(
                 payload=serializer.data, 
                 status=status.HTTP_200_OK, 
-                count=count, success=True
+                count=count, 
+                totalCount=totalCount,
+                totalPages=totalpages,
+                totalFilteredPages=filteredPages,
+                success=True
             )
         except Exception as e:
-            error = {'detail': _(f"An error occurred {e}")}
+            error = {'detail': _(f"{e}")}
             return Response(error, status.HTTP_400_BAD_REQUEST)
+    
+
+
 
 
 
 
 class InvoiceDetailView(generics.GenericAPIView):
     serializer_class = InvoiceDetailSerializer
+    authentication_classes = []
     
     def get_object(self, request, id):
-        return Invoice.objects.get(id=id, account=request.user["account"]["id"])
+        return Invoice.objects.get(id=id)
 
     def get(self, request, id):
         try:
             invoice = self.get_object(request, id)
             serializer = self.serializer_class(invoice, many=False)
-        except Invoice.DoesNotExist:
-            error = {'detail': _("Invoice not found")}
+            
+            invoice_data = serializer.data
+            tenant_id = invoice_data["tenant"]  # Get the tenant ID from the serialized data
+            
+            # fetch tenant details
+            try:
+                useAuthApi = UseAuthApi("user-details")
+                tenantData = useAuthApi.fetchUserDetails(tenant_id)
+                invoice_data['tenant'] = tenantData
+                return customResponse(payload=invoice_data, status=status.HTTP_200_OK)
+            except:
+                return customResponse(payload=serializer.data, status=status.HTTP_200_OK)
+                
+           
+        except Exception as e:
+            error = {'detail': _(f"{e}")}
             return Response(error, status.HTTP_404_NOT_FOUND)
-        return customResponse(payload=serializer.data, status=status.HTTP_200_OK)
+       
+    
 
     def patch(self, request, id):
         invoice = self.get_object(request, id=id)

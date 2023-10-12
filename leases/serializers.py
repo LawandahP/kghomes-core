@@ -23,16 +23,16 @@ class CustomDateField(serializers.CharField):
 
 class LeaseSerializer(serializers.ModelSerializer):
     file = FilesSerializer(many=False, read_only=True)
-    start_date = CustomDateField()
-    first_rent_date = CustomDateField()
-    end_date = CustomDateField()
+    # start_date = CustomDateField()
+    # first_rent_date = CustomDateField()
+    # end_date = CustomDateField()
 
     class Meta:
         model = Lease
         fields = [
             "id", "property", "unit",             
             "tenant", "term",             
-            "rent", "security_deposit", 
+            "rent", "due_day", "security_deposit", 
             "rent_frequency", "start_date",       
             "end_date", "file", "account", "first_rent_date"
         ]
@@ -78,7 +78,7 @@ class LeaseDetailsSerializer(serializers.ModelSerializer):
             "tenant", "term",             
             "rent", "security_deposit", 
             "rent_frequency", "start_date",       
-            "end_date", "file", "account"
+            "end_date", "file", "account", "due_day"
         ]
         read_only_fields = [
             "id",
@@ -89,11 +89,14 @@ class LeaseDetailsSerializer(serializers.ModelSerializer):
 class BillsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bills
-        fields = ["id", "lease", "invoice", "item", "quantity", "description", "rate", "amount"]
+        fields = ["id", "invoice", "item", "quantity", "description", "rate", "amount"]
 
         def create(self, validated_data):
             request = self.context['request']
-            bills = Bills.objects.create(**validated_data)   
+            invoice = validated_data.pop("invoice")
+            invoice = Invoice.objects.get(id=invoice)
+
+            bills = Bills.objects.create(**validated_data, invoice=invoice)   
             # audit(request=request, action_flag="created fees for")         
             return bills
 
@@ -103,7 +106,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
         fields = [
-                "id", "lease", "unit", "due_on", "property", "paid_on", "payment_status",
+                "id", "lease", "unit", "due_on", "property", "paid_on", "status",
                 "amount_paid", "balance", "created_at", "updated_at", "total_amount", 
                 "tenant"
             ]
@@ -122,7 +125,7 @@ class InvoiceDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
         fields = [
-                "id", "lease", "unit", "due_on", "property", "paid_on", "payment_status", "invoiceBills",
+                "id", "lease", "unit", "due_on", "property", "paid_on", "status", "invoiceBills",
                 "amount_paid", "balance", "created_at", "updated_at", "total_amount", 
                 "tenant"
             ]
