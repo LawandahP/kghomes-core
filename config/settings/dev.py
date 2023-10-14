@@ -185,8 +185,6 @@ LOGGING = {
     },
 }
 
-
-
 AUTHENTICATION_BACKENDS = (
     'config.auth.CustomBackend',
 )
@@ -204,16 +202,13 @@ REST_FRAMEWORK = {
 
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
         'PAGE_SIZE': 100
-
 }
-
 
 ALGORITHM = config('ALGORITHM')
 SIGNING_KEY = config('JWT_SECRET')
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
-
 
 # Media Config
 
@@ -233,7 +228,6 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': config('CLOUDINARY_API_SECRET')
 }
 
-
 # celery configuration
 # Configure Celery to use the shared Celery worker container
 # CELERY_broker_url = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
@@ -242,7 +236,6 @@ CLOUDINARY_STORAGE = {
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER", "redis://localhost:6379/0")
 result_backend = os.environ.get("CELERY_BROKER", "redis://localhost:6379/0")
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True  # or False
-
 
 # AUTH_BACKEND = "http://backend-auth:8001/api/v1/current_user/"
 AUTH_BACKEND = "http://localhost:8001/api/v1/current_user/"
@@ -257,3 +250,7 @@ CACHES = {
         }
     }
 }
+
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
+STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
