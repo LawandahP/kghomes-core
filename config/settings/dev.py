@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'files',
     'leases',
     'bff',
-    'cloudinary_storage',
+    # 'cloudinary_storage',
     'django_celery_beat',
 
     'corsheaders',

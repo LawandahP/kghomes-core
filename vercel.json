@@ -25,5 +25,5 @@
       "dest": "config/wsgi.py"
     }
   ],
-  "outputDirectory": "config/staticfiles"
+  "outputDirectory": "config/static"
 }
