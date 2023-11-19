@@ -26,22 +26,6 @@ class CustomPaginator(PageNumberPagination):
     page_query_param = 'page'
     page_size_query_param = 'size'
 
-    # def get_paginated_response(self, data):
-    #     response = super(CustomPaginator, self).get_paginated_response(data)
-    #     response.data['total_pages'] = self.page.paginator.num_pages
-        # return response
-    # def get_paginated_response(self, data):
-    #     return Response({
-    #         'links': {
-    #            'next': self.get_next_link(),
-    #            'previous': self.get_previous_link()
-    #         },
-    #         'count': self.page.paginator.count,
-    #         'total_pages': self.page.paginator.num_pages,
-    #         'results': data
-    #     })
-    # return self.get_paginated_response(self.paginate_queryset(serializer.data))
-
 
 class CreatViewLease(generics.GenericAPIView):
     serializer_class = LeaseSerializer

@@ -209,6 +209,7 @@ SIGNING_KEY = config('JWT_SECRET')
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
 
+
 # Media Config
 
 MEDIA_URL = '/media/'

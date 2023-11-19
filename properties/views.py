@@ -22,6 +22,7 @@ from rest_framework.exceptions import ParseError
 from rest_framework.parsers import FileUploadParser
 from files.models import Files
 from properties.utils import imageWorker
+from units.models import Units
 
 
 # from django_filters.rest_framework import FilterSet
@@ -38,10 +39,7 @@ from .serializers import PropertySerializer, PropertyDetailsSerializer, Property
 
 # from unit.models import Unit
 # from unit.serializers import UnitSerializer
-from django.http import JsonResponse
 
-
-from config.auth import CustomBackend
 
 fs = FileSystemStorage(location='tmp/')
 
@@ -113,13 +111,27 @@ class PropertyDetailView(generics.GenericAPIView):
 
     # @method_decorator(group_required('REALTOR', 'LANDLORD'))
     def get(self, request, id):
+
         try:
+            # get total units
+            units = Units.objects.filter(property=id)
+            occupiedUnits = Units.objects.filter(property=id, status="Occupied")
+            vacantUnits = Units.objects.filter(property=id, status="Vacant")
+
+            totalUnits = len(units)
+            totalVacantUnits = len(vacantUnits)
+            totalOccupiedUnits = len(occupiedUnits)
+            # get the property details
             property = self.get_object(request, id)
             serializer = self.serializer_class(property, many=False)
         except Property.DoesNotExist:
             error = {'detail': "Property not found"}
             return Response(error, status.HTTP_404_NOT_FOUND)
-        return customResponse(payload=serializer.data, status=status.HTTP_200_OK)
+        return customResponse(
+            payload=serializer.data, totalUnits=totalUnits, 
+            vacantUnits=totalVacantUnits, occupiedUnits=totalOccupiedUnits,
+            status=status.HTTP_200_OK
+        )
 
     # @method_decorator(group_required('REALTOR'))
     def patch(self, request, id):

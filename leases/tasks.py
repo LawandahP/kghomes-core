@@ -13,17 +13,19 @@ celeryLogger = get_task_logger(__name__)
 @shared_task(name="create_recurring_invoices")
 def create_monthly_invoices():
     celeryLogger.info("creating invoice...")
-    # Get all active leases that are within their lease duration
+
+    # Get all active leases that are within their lease duration lte to current date
     today = timezone.now().date()
     active_leases = Lease.objects.filter(
-        start_date__lte=today,
-        end_date__gte=today,
+        end_date__lte=today,
     )
 
     celeryLogger.info(today.day)
+    
     # Loop through active leases and create invoices
     for lease in active_leases:
-        if today.day == lease.due_day:  # Check if today is the due day
+        if 6 == lease.due_day:  # Check if today is the due day
+            
             # Create a new invoice for this month
             next_month = today.replace(day=1) + timezone.timedelta(days=32)
             due_date = next_month.replace(day=lease.due_day)
@@ -49,6 +51,8 @@ def create_monthly_invoices():
             )
             bill.save()
             celeryLogger.info("invoice created...")
+        else:
+            celeryLogger.info(_("Not yet"))
 
 
 
