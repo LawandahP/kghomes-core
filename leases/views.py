@@ -65,15 +65,40 @@ class CreatViewLease(generics.GenericAPIView):
         error = {'detail': serializer.errors}
         return Response(error, status.HTTP_400_BAD_REQUEST)
     
+    # def get(self, request):
+    #     try:
+    #         leases = self.get_object(request)
+    #         count = len(leases)
+    #         serializer = LeaseDetailsSerializer(leases, many=True)
+    #         return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count, success=True)
+    #     except Lease.DoesNotExist:
+    #         error = {'detail': _("Lease not found")}
+    #         return Response(error, status.HTTP_404_NOT_FOUND)
     def get(self, request):
         try:
             leases = self.get_object(request)
             count = len(leases)
             serializer = LeaseDetailsSerializer(leases, many=True)
+
+            modified_invoices = []  # Create a list to store modified leases
+            
+            for lease in serializer.data:
+                tenant_id = lease["tenant"]  # Get the tenant ID from the serialized data
+
+                # Make an API request to fetch tenant data based on tenant_id
+                try:
+                    useAuthApi = UseAuthApi("user-details")
+                    tenantData = useAuthApi.fetchUserDetails(tenant_id)
+                    lease['tenant'] = tenantData
+                    modified_invoices.append(lease)
+                except:
+                    modified_invoices.append(lease)
+
             return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count, success=True)
         except Lease.DoesNotExist:
             error = {'detail': _("Lease not found")}
             return Response(error, status.HTTP_404_NOT_FOUND)
+
 
 
 class LeaseDetailView(generics.GenericAPIView):
@@ -203,6 +228,7 @@ class CreateInvoiceView(generics.GenericAPIView):
     
 
 
+    
 
 
 

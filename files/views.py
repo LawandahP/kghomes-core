@@ -38,7 +38,7 @@ class FilesCreateListView(generics.GenericAPIView):
             except Exception as e:
                 return Response({"detail": f"An error occurred: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Property.DoesNotExist:
-            return customResponse(message = _("Property does not exist"), status=401 )
+            return Response({"detail" : _("Property does not exist")}, status=401)
 
     # @method_decorator(group_required('REALTOR'))
     def get(self, request):
