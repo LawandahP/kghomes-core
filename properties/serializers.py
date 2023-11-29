@@ -12,11 +12,13 @@ class PropertySerializer(serializers.ModelSerializer):
     # amenities = serializers.StringRelatedField(many=True, read_only=True)
     images = FilesSerializer(many=True, read_only=True)
     amenities = serializers.JSONField()
+    owner = serializers.JSONField()
+    
     class Meta:
         model = Property
         fields = [
             'id', 'slug', 'latlng', 'bounds', 'address', 'name', 'images',
-            'owner', 'account', 'amenities', 'property_type'
+            'owner', 'account', 'amenities', 'property_type', 'description'
         ]
         read_only_fields = [
             "units",
@@ -25,11 +27,9 @@ class PropertySerializer(serializers.ModelSerializer):
         ]
     
     def create(self, validated_data):
-        request = self.context['request']
         location = validated_data.pop('address')
-        
-        property_type = request.data["category"]
-
+        owner = validated_data.pop('owner')
+        owner = owner["id"]
 
         if location:
             address = location["address"]
@@ -39,7 +39,7 @@ class PropertySerializer(serializers.ModelSerializer):
         return Property.objects.create(
             **validated_data, 
             address=address, 
-            property_type=property_type
+            owner=owner
         )
 
     
@@ -97,36 +97,35 @@ class PropertyDetailsSerializer(serializers.ModelSerializer):
         model = Property
         fields = [ 
             'id', 'slug', 'name', 'latlng', 'bounds', 'address', 'amenities', 
-            'address', 'owner', 'property_type', 'images', 'account'
+            'owner', 'property_type', 'images', 'account', 'description', 'property_type'
             ]
         read_only_fields = [ "id", "slug", "amenities"]
 
 
 class PropertyUpdateSerializer(serializers.ModelSerializer):
+    amenities = serializers.ListField(child=serializers.CharField(), allow_empty=True)
+    owner = serializers.JSONField()
+
     class Meta:
         model = Property
-        fields = ['id', 'slug', 'name', 'latlng', 'bounds', 'address', 'amenities', 'address', 'owner', 'images']
+        fields = [
+            'id', 'slug', 'name', 'latlng', 'bounds', 'address', 'amenities', 
+            'owner', 'images', 'property_type', 'description'
+        ]
         read_only_fields = [ "id", "slug", "amenities", "images" ]
 
+    def update(self, instance, validated_data):
+        owner_data = validated_data.pop('owner', {})
+        owner_id = owner_data.get('id')
+        # Update the owner field with the extracted owner_id
+        instance.owner = owner_id
 
-# Joint Serializer
+        # Update all other fields at once
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
 
-# class JointPropertySerializer(serializers.ModelSerializer):
+        instance.save()
+        return instance
 
 
-# def create(self, validated_data):        
-#         try: 
-#             request = self.context['request']
-#             name = self.validated_data['name']
 
-#             for amenity in request.data['amenities']:
-#                 amenity_obj = Amenities.objects.get(name=amenity['name'])
-#                 property.amenities.add(amenity_obj)
-            
-#             property = Property.objects.create(**validated_data)
-#             property.save()
-#             audit(request=request, action_flag=f"Property {name} Created")
-#             return property
-
-#         except Exception as e:
-#             raise serializers.ValidationError({'detail': [e]})

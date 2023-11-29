@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+import copy
 import csv
 import json
 import threading
@@ -11,6 +12,7 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage
 from openpyxl import load_workbook
 import requests
+from bff.utils import UseAuthApi
 from config.permissions import IsRealtor
 
 from rest_framework.permissions import IsAuthenticated
@@ -23,7 +25,7 @@ from rest_framework.parsers import FileUploadParser
 from files.models import Files
 from properties.utils import imageWorker
 from units.models import Units
-
+from utils.utils import logging 
 
 # from django_filters.rest_framework import FilterSet
 
@@ -39,12 +41,6 @@ from .serializers import PropertySerializer, PropertyDetailsSerializer, Property
 
 # from unit.models import Unit
 # from unit.serializers import UnitSerializer
-
-
-fs = FileSystemStorage(location='tmp/')
-
-
-
 
 
 class PropertyCreateListView(generics.GenericAPIView):
@@ -111,7 +107,6 @@ class PropertyDetailView(generics.GenericAPIView):
 
     # @method_decorator(group_required('REALTOR', 'LANDLORD'))
     def get(self, request, id):
-
         try:
             # get total units
             units = Units.objects.filter(property=id)
@@ -122,13 +117,23 @@ class PropertyDetailView(generics.GenericAPIView):
             totalVacantUnits = len(vacantUnits)
             totalOccupiedUnits = len(occupiedUnits)
             # get the property details
-            property = self.get_object(request, id)
-            serializer = self.serializer_class(property, many=False)
+            propertyData = self.get_object(request, id)
+            serializer = self.serializer_class(propertyData, many=False)
+            
+            useAuthApi = UseAuthApi("user-details")
+            ownerData = useAuthApi.fetchUserDetails(serializer.data["owner"])
+            # serializer.data['owner'] = ownerData
+            serializer_data_copy = copy.deepcopy(serializer.data)
+
+            # Assign ownerData to the copied data
+            serializer_data_copy['owner'] = ownerData
+            
         except Property.DoesNotExist:
             error = {'detail': "Property not found"}
             return Response(error, status.HTTP_404_NOT_FOUND)
+        
         return customResponse(
-            payload=serializer.data, totalUnits=totalUnits, 
+            payload=serializer_data_copy, totalUnits=totalUnits, 
             vacantUnits=totalVacantUnits, occupiedUnits=totalOccupiedUnits,
             status=status.HTTP_200_OK
         )
@@ -137,7 +142,7 @@ class PropertyDetailView(generics.GenericAPIView):
     def patch(self, request, id):
         try:
             property = self.get_object(request=request, id=id)
-            serializer = self.serializer_class(property, data=request.data, partial=True)
+            serializer = PropertyUpdateSerializer(property, data=request.data, partial=True)
 
             if serializer.is_valid():
                 serializer.save()

@@ -18,7 +18,7 @@ from leases.filters import InvoiceFilter
 
 from .serializers import BillsSerializer, InvoiceDetailSerializer, InvoiceSerializer, LeaseDetailsSerializer, LeaseSerializer
 from leases.models import Bills, Invoice, Lease
-from utils.utils import customResponse, logger
+from utils.utils import customResponse
 
 
 class CustomPaginator(PageNumberPagination):
