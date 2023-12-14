@@ -5,6 +5,7 @@ from rest_framework.response import Response
 
 from django.utils.translation import gettext_lazy as _
 from bff.utils import UseAuthApi
+from properties.models import Property
 from units.filters import UnitFilter
 from units.serializers import UnitAssignmentSerializer, UnitSerializer
 from units.models import Assignment, Units
@@ -124,8 +125,12 @@ class AssignUnitToTenant(generics.GenericAPIView):
     authentication_classes = []
 
     def get_object(self, request, id):
+        # try:
         queryset = Units.objects.get(id=id)
         return queryset
+        # except:
+        #     queryset = Property.objects.get(id=id)
+        # return queryset
 
     def post(self, request, id):
         data = request.data
@@ -161,38 +166,17 @@ class AssignUnitToTenant(generics.GenericAPIView):
             return Response(error, status.HTTP_404_NOT_FOUND)
 
 
-    # def get(self, request, id):
-    #     current_assignment = request.GET.get("assignment", False)
-    #     try:
-    #         unit = self.get_object(request, id)
-    #         assignments = Assignment.objects.filter(unit=unit)
-    #         serializer = self.serializer_class(assignments, many=True)
-            
-    #         assignments_data = serializer.data
-            
-    #         modified_assignments = []
-
-    #         # fetch tenant details
-    #         for assignment in assignments_data:
-    #             tenant_id = assignment['tenant']
-    #             useAuthApi = UseAuthApi("user-details")
-    #             tenantData = useAuthApi.fetchUserDetails(tenant_id)
-    #             assignment['tenant'] = tenantData
-
-    #             if current_assignment == "current" and 'vacated_date' in assignment and assignment['vacated_date'] is None:
-    #                 modified_assignments.append(assignment)
-    #             elif not current_assignment:
-    #                 modified_assignments.append(assignment)
-           
-    #     except Units.DoesNotExist:
-    #         error = {'detail': _("Invoice not found")}
-    #         return Response(error, status.HTTP_404_NOT_FOUND)
-    #     return customResponse(payload=assignments_data, status=status.HTTP_200_OK)
+    
     def get(self, request, id):
         current_assignment = request.GET.get("assignment", False)
         try:
             unit = self.get_object(request, id)
             assignments = Assignment.objects.filter(unit=unit)
+
+            # Filter tenants where vacated_date is null
+            active_tenants = assignments.filter(vacated_date__isnull=True)
+            active_tenants_count = active_tenants.count()
+            
             serializer = self.serializer_class(assignments, many=True)
             
             assignments_data = serializer.data
@@ -212,11 +196,41 @@ class AssignUnitToTenant(generics.GenericAPIView):
                         modified_assignments.append(assignment)
                 elif not current_assignment:
                     modified_assignments.append(assignment)
+            return customResponse(payload=modified_assignments, count=active_tenants_count, status=status.HTTP_200_OK)
+
+        except:
+            # Get property Tenants
+            try:
+                # properti = Property.objects.get(id=id)
+                # logger.warn(properti)
+                tenants = Assignment.objects.filter(property=id)
+
+                # Filter tenants where vacated_date is null
+                active_tenants = tenants.filter(vacated_date__isnull=True)
+                active_tenants_count = active_tenants.count()
+
+                serializer = self.serializer_class(tenants, many=True)
+                
+                tenants_data = serializer.data
+                
+                modified_assignments = []
+
+                # fetch tenant details
+                for assignment in tenants_data:
+                    tenant_id = assignment['tenant']
+                    useAuthApi = UseAuthApi("user-details")
+                    tenantData = useAuthApi.fetchUserDetails(tenant_id)
+                    assignment['tenant'] = tenantData
+                    modified_assignments.append(assignment)
+                return customResponse(payload=modified_assignments, count=active_tenants_count, status=status.HTTP_200_OK)
+            except:
+                error = {'detail': _("Property not found")}
+                return Response(error, status.HTTP_404_NOT_FOUND)
+            
+
+            # error = {'detail': _("Unit not found")}
+            # return Response(error, status.HTTP_404_NOT_FOUND)
         
-        except Units.DoesNotExist:
-            error = {'detail': _("Invoice not found")}
-            return Response(error, status.HTTP_404_NOT_FOUND)
-        return customResponse(payload=modified_assignments, status=status.HTTP_200_OK)
 
     
     

@@ -1,63 +1,80 @@
-
-from utils.utils import logger as serverLogger
-from celery.utils.log import get_task_logger
-
-from celery import shared_task
+from datetime import timedelta
+from django.utils.dateformat import format
 from django.utils import timezone
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 from .models import Lease, Invoice, Bills
+from celery import shared_task
+from celery.utils.log import get_task_logger
+
+
 
 celeryLogger = get_task_logger(__name__)
 
 @shared_task(name="create_recurring_invoices")
-def create_monthly_invoices():
+def generate_monthly_invoice():
+    '''
+    This is a recurring function crontab which runs at a specific amount of
+    time as set in config/celery.py
+    It's designed to generate monthly invoices for leases with a rent frequency
+    of 'Monthly', taking into account the due day specified in each lease. 
+    Additionally, it ensures that a new invoice is generated/created only if 
+    either the due day is two days from the current date or there is no existing 
+    invoice for the current month and year.
+    '''
+    
     celeryLogger.info("creating invoice...")
-
-    # Get all active leases that are within their lease duration lte to current date
+    # get leases which have not expired
     today = timezone.now().date()
     active_leases = Lease.objects.filter(
-        end_date__lte=today,
+        Q(end_date__gte=today) | Q(end_date__isnull=True)
     )
-
-    celeryLogger.info(today.day)
     
-    # Loop through active leases and create invoices
     for lease in active_leases:
-        if 6 == lease.due_day:  # Check if today is the due day
-            
-            # Create a new invoice for this month
-            next_month = today.replace(day=1) + timezone.timedelta(days=32)
-            due_date = next_month.replace(day=lease.due_day)
+        if lease.rent_frequency == 'Monthly':
+            due_day = lease.due_day
+            existing_invoice = Invoice.objects.filter(lease=lease, due_on__month=today.month, due_on__year=today.year).first()
+            if (today + timedelta(days=5)).day == due_day and not existing_invoice or not existing_invoice:
+                # if not existing_invoice:
+                invoice = Invoice.objects.create(
+                    lease=lease,
+                    property=lease.property,
+                    unit=lease.unit,
+                    tenant=lease.tenant,
+                    total_amount=lease.rent,
+                    due_on=timezone.datetime(today.year, today.month, due_day).date(),
+                    status="Unpaid",
+                    account=lease.property.account
+                )
+                invoice.save()
+                bill = Bills.objects.create(
+                    invoice=invoice,
+                    item="Rent",
+                    description=f'Rent for {today.strftime("%B")}, {today.strftime("%Y")}',
+                    quantity=1,
+                    rate=lease.rent,
+                )
+                bill.save()
+                celeryLogger.info("invoice created...")
 
-            new_invoice = Invoice.objects.create(
-                lease=lease,
-                property=lease.property,
-                unit=lease.unit,
-                tenant=lease.tenant,
-                total_amount=lease.rent,  # Use the rent amount from the lease
-                due_on=due_date,
-                status=Invoice.UNPAID,  # Set the initial payment status
-                account=lease.account
-            )
-            new_invoice.save()
 
-            bill = Bills.objects.create(
-                invoice=new_invoice,
-                item=_("Rent"),
-                description=_(f"Rent payment for "),
-                quantity=1,
-                rate=lease.rent
-            )
-            bill.save()
-            celeryLogger.info("invoice created...")
+
+@shared_task(name="update-invoice-status")
+def updateInvoiceStatus():
+
+    celeryLogger.info("updating invoice status...")
+    today = timezone.now().date() 
+    overdue_invoices = Invoice.objects.filter(due_on__lt=today, status__in=["Unpaid", "Due"])
+    
+
+    for invoice in overdue_invoices:
+        if today > invoice.due_on:
+            invoice.status = Invoice.OVERDUE
+            invoice.save()
+            celeryLogger.info("updated invoice status")
         else:
-            celeryLogger.info(_("Not yet"))
-
-
-
-
-
+            pass
 
 
 

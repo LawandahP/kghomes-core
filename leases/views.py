@@ -18,7 +18,7 @@ from leases.filters import InvoiceFilter
 
 from .serializers import BillsSerializer, InvoiceDetailSerializer, InvoiceSerializer, LeaseDetailsSerializer, LeaseSerializer
 from leases.models import Bills, Invoice, Lease
-from utils.utils import customResponse
+from utils.utils import customResponse, logger
 
 
 class CustomPaginator(PageNumberPagination):
@@ -48,7 +48,6 @@ class CreatViewLease(generics.GenericAPIView):
             
             if request.FILES:
                 files = request.FILES.getlist("file")
-                # logger.critical(files)
                 
                 for i in files:
                     file_instance = Files(file_url=i)
@@ -58,41 +57,40 @@ class CreatViewLease(generics.GenericAPIView):
             serializer.save(account=account)            
             
             return customResponse(
-                payload=serializer.data,
+                # payload=serializer.data,
                 message=_("Lease Created Successfully."),
                 status=status.HTTP_201_CREATED
             )
         error = {'detail': serializer.errors}
         return Response(error, status.HTTP_400_BAD_REQUEST)
-    
-    # def get(self, request):
-    #     try:
-    #         leases = self.get_object(request)
-    #         count = len(leases)
-    #         serializer = LeaseDetailsSerializer(leases, many=True)
-    #         return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count, success=True)
-    #     except Lease.DoesNotExist:
-    #         error = {'detail': _("Lease not found")}
-    #         return Response(error, status.HTTP_404_NOT_FOUND)
+        
     def get(self, request):
         try:
             leases = self.get_object(request)
             count = len(leases)
             serializer = LeaseDetailsSerializer(leases, many=True)
+            # logger.warning(serializer.data)
+            # Get all tenant IDs
+            tenant_ids = [lease["tenant"] for lease in serializer.data]  
+    
+            # Make a single API request to fetch tenant data for all tenants
+            try:
+                useAuthApi = UseAuthApi("bulk-user-details")
+                tenantData = useAuthApi.fetchBulkUserDetails(tenant_ids)
+       
+            except:
+                logger.warning("Error when fetching user details")
+                # raise Exception(_("An error occured while fetching user details"))
+                pass
 
-            modified_invoices = []  # Create a list to store modified leases
+            # Replace tenant IDs with corresponding tenant date
             
             for lease in serializer.data:
-                tenant_id = lease["tenant"]  # Get the tenant ID from the serialized data
-
-                # Make an API request to fetch tenant data based on tenant_id
-                try:
-                    useAuthApi = UseAuthApi("user-details")
-                    tenantData = useAuthApi.fetchUserDetails(tenant_id)
-                    lease['tenant'] = tenantData
-                    modified_invoices.append(lease)
-                except:
-                    modified_invoices.append(lease)
+                tenant_id = lease["tenant"]
+                for tenant in tenantData:
+                    if tenant["id"] == tenant_id:
+                        lease['tenant'] = tenant
+                        break
 
             return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count, success=True)
         except Lease.DoesNotExist:
@@ -106,8 +104,7 @@ class LeaseDetailView(generics.GenericAPIView):
 
     def get_object(self, request, id):
         return Lease.objects.get(id=id)
-
-    # 
+ 
     def get(self, request, id):
         try:
             lease = self.get_object(request, id)
@@ -190,27 +187,32 @@ class CreateInvoiceView(generics.GenericAPIView):
         try:
             totalCount = self.get_all_invoices(request)
             page_size = request.GET.get("size", 10)
-            totalpages=math.ceil(totalCount/int(page_size))
+            totalpages = math.ceil(totalCount/int(page_size))
             
             invoices = self.get_object(request)  # Assuming this returns a queryset of Django model objects
             serializer = self.serializer_class(invoices, many=True)
+
+            # Get all tenant IDs
+            tenant_ids = [lease["tenant"] for lease in serializer.data]  
             
             modified_invoices = []  # Create a list to store modified invoices
-
+             # Make a single API request to fetch tenant data for all tenants
+            try:
+                useAuthApi = UseAuthApi("bulk-user-details")
+                tenantData = useAuthApi.fetchBulkUserDetails(tenant_ids)
+            except:
+                logger.warning("Error when fetching user details")
+                # raise Exception(_("An error occured while fetching user details"))
+                pass
+            
             for invoice in serializer.data:
-                tenant_id = invoice["tenant"]  # Get the tenant ID from the serialized data
-
-                # Make an API request to fetch tenant data based on tenant_id
-                try:
-                    useAuthApi = UseAuthApi("user-details")
-                    tenantData = useAuthApi.fetchUserDetails(tenant_id)
-                    invoice['tenant'] = tenantData
-                    modified_invoices.append(invoice)
-                except:
-                    modified_invoices.append(invoice)
+                tenant_id = invoice["tenant"]
+                for tenant in tenantData:
+                    if tenant["id"] == tenant_id:
+                        invoice['tenant'] = tenant
+                        modified_invoices.append(invoice)
 
             count = len(modified_invoices)
-            
             
             filteredPages=math.ceil(count/int(page_size)) 
             return customResponse(
@@ -225,6 +227,39 @@ class CreateInvoiceView(generics.GenericAPIView):
         except Exception as e:
             error = {'detail': _(f"{e}")}
             return Response(error, status.HTTP_400_BAD_REQUEST)
+        
+    
+    # def get(self, request):
+    #     try:
+    #         leases = self.get_object(request)
+    #         count = len(leases)
+    #         serializer = LeaseDetailsSerializer(leases, many=True)
+
+    #         # Get all tenant IDs
+    #         tenant_ids = [lease["tenant"] for lease in serializer.data]  
+
+    #         # Make a single API request to fetch tenant data for all tenants
+    #         try:
+    #             useAuthApi = UseAuthApi("bulk-user-details")
+    #             tenantData = useAuthApi.fetchBulkUserDetails(tenant_ids)
+    #             logger.info(tenantData)
+    #         except:
+    #             logger.warning("Error when fetching user details")
+    #             # raise Exception(_("An error occured while fetching user details"))
+    #             pass
+
+    #         # Replace tenant IDs with corresponding tenant date
+    #         for lease in serializer.data:
+    #             tenant_id = lease["tenant"]
+    #             for tenant in tenantData:
+    #                 if tenant["id"] == tenant_id:
+    #                     lease['tenant'] = tenant
+    #                     break
+
+    #         return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count, success=True)
+    #     except Lease.DoesNotExist:
+    #         error = {'detail': _("Lease not found")}
+    #         return Response(error, status.HTTP_404_NOT_FOUND)
     
 
 

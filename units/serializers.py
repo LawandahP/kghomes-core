@@ -4,6 +4,7 @@ from properties.models import Property
 
 from properties.serializers import PropertySerializer
 from .models import Units, Assignment
+from utils.utils import logger
 
 class UnitSerializer(serializers.ModelSerializer):
     # status = serializers.CharField(read_only=True)
@@ -17,7 +18,6 @@ class UnitSerializer(serializers.ModelSerializer):
             "status"
         ] 
 
-
     def create(self, validated_data):
         property = validated_data.pop('property')
         property = Property.objects.get(id = property["id"])
@@ -29,9 +29,21 @@ class UnitSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         property = validated_data.pop('property')
         property = Property.objects.get(id = property["id"])
-        # Update the owner field with the extracted owner_id
-        instance.owner = property
 
+        logger.info(property)
+        # Update the property field with the extracted property_id
+        instance.property = property
+
+        # update property in assignment when property in unit is updated
+        try:
+            assignment = Assignment.objects.get(unit=instance)
+            assignment.property = property
+            assignment.save()
+            logger.info(assignment)
+        except:
+            logger.warning("Unit has not been assigned before!")
+            pass
+        
         # Update all other fields at once
         for key, value in validated_data.items():
             setattr(instance, key, value)
@@ -50,7 +62,7 @@ class UnitAssignmentSerializer(serializers.ModelSerializer):
     tenant = serializers.JSONField()
     class Meta:
         model = Assignment
-        fields = ['id', 'tenant', 'unit', 'assigned_date', 'vacated_date']
+        fields = ['id', 'tenant', 'property', 'unit', 'assigned_date', 'vacated_date']
 
         read_only_fields = [
             "id",
@@ -70,10 +82,14 @@ class UnitAssignmentSerializer(serializers.ModelSerializer):
                 unit = Units.objects.select_for_update().get(id=id)
                 unit.status = "Occupied"
                 unit.save()
+            
+            # get property instance using unit.property(name)
+            unit_property = Property.objects.get(name=unit.property)
 
             assignment = Assignment.objects.create(
                 **validated_data, 
-                tenant=tenant_id
+                tenant=tenant_id,
+                property=unit_property
             )
         return assignment
 

@@ -62,6 +62,7 @@ class Assignment(models.Model):
     id               = CustomUUIDField()
     tenant           = models.CharField(max_length=50)
     unit             = models.ForeignKey(Units, on_delete=models.CASCADE)
+    property         = models.ForeignKey(Property, on_delete=models.CASCADE, null=True)
     assigned_date    = models.DateTimeField(auto_now_add=True)
     vacated_date     = models.DateField(blank=True, null=True)
 

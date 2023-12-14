@@ -1,8 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 import copy
 import csv
-import json
-import threading
 from django.http import Http404
 from django.shortcuts import render
 from django.contrib.auth import get_user_model
@@ -11,7 +9,6 @@ from django.utils.translation import gettext_lazy as _
 from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage
 from openpyxl import load_workbook
-import requests
 from bff.utils import UseAuthApi
 from config.permissions import IsRealtor
 
@@ -21,13 +18,8 @@ from rest_framework.decorators import api_view
 from rest_framework import status, generics
 from rest_framework.views import APIView
 from rest_framework.exceptions import ParseError
-from rest_framework.parsers import FileUploadParser
-from files.models import Files
 from properties.utils import imageWorker
 from units.models import Units
-from utils.utils import logging 
-
-# from django_filters.rest_framework import FilterSet
 
 from utils.utils import CustomPagination, compressImage, customResponse, logger
 
@@ -37,10 +29,6 @@ from .filters import PropertyFilter
 # from files.models import Files
 
 from .serializers import PropertySerializer, PropertyDetailsSerializer, PropertyUpdateSerializer
-# from landlord.serializers import LandlordSerializer
-
-# from unit.models import Unit
-# from unit.serializers import UnitSerializer
 
 
 class PropertyCreateListView(generics.GenericAPIView):

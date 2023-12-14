@@ -1,15 +1,17 @@
 
+import humanize
 from rest_framework import serializers
 
 from files.serializers import FilesSerializer
 from leases.models import Bills, Invoice, Lease
+from properties.models import Property
+from units.models import Units
 from units.serializers import UnitSerializer
 from datetime import datetime
-
+from django.utils import timezone
+# from utils.utils import logger
 
 class CustomDateField(serializers.CharField):
-    # def to_representation(self, obj):
-    #     return datetime.strftime(obj, '%Y-%m-%d')
 
     def to_internal_value(self, data):
         try:
@@ -23,9 +25,9 @@ class CustomDateField(serializers.CharField):
 
 class LeaseSerializer(serializers.ModelSerializer):
     file = FilesSerializer(many=False, read_only=True)
-    # start_date = CustomDateField()
-    # first_rent_date = CustomDateField()
-    # end_date = CustomDateField()
+    tenant = serializers.JSONField()
+    unit = serializers.JSONField()
+    property = serializers.JSONField()
 
     class Meta:
         model = Lease
@@ -41,30 +43,24 @@ class LeaseSerializer(serializers.ModelSerializer):
             "account"
         ]
 
-    # def dateConfig(self, dateStr=None):
-    #     formatDate = datetime.strptime(dateStr, '%a %b %d %Y %H:%M:%S GMT%z (%Z)')
-    #     return formatDate.strftime('%Y-%m-%d')
+    def create(self, validated_data):
+        # data sent as object
+        tenant = validated_data.pop('tenant')
+        unit = validated_data.pop('unit')
+        property_ = validated_data.pop('property') 
+
+        tenant = tenant["tenant"]["id"]
+        unit = Units.objects.get(id=unit["id"])
+        property_ = Property.objects.get(id=property_["id"])
 
 
-
-    # def create(self, validated_data):
-    #     request = self.context['request']
-
-    #     start_date = validated_data.pop('start_date')
-    #     end_date = validated_data.pop('end_date')
-    #     first_rent_date = validated_data.pop('first_rent_date')
-      
-
-    #     start_date = self.dateConfig(start_date)
-    #     end_date = self.dateConfig(end_date)
-    #     first_rent_date = self.dateConfig(first_rent_date)
-
-    #     return Lease.objects.create(
-    #         **validated_data, 
-    #         first_rent_date=first_rent_date,
-    #         end_date=end_date,
-    #         start_date=start_date
-    #     )
+        return Lease.objects.create(
+            **validated_data, 
+            tenant=tenant,
+            unit=unit,
+            property=property_
+        )
+    
     
     
 class LeaseDetailsSerializer(serializers.ModelSerializer):
@@ -102,20 +98,27 @@ class BillsSerializer(serializers.ModelSerializer):
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
-    
+    due_in_days = serializers.SerializerMethodField()
     class Meta:
         model = Invoice
         fields = [
                 "id", "lease", "unit", "due_on", "property", "paid_on", "status",
                 "amount_paid", "balance", "created_at", "updated_at", "total_amount", 
-                "tenant"
+                "tenant", "due_in_days"
             ]
 
-        # def create(self, validated_data):
-        #     request = self.context['request']
-        #     lease = Invoice.objects.create(**validated_data)   
-        #     # audit(request=request, action_flag="created lease for")         
-        #     return lease
+    def get_due_in_days(self, obj):
+        today = timezone.now().date()
+        if obj.due_on and today:
+            difference_in_days = (obj.due_on - today).days
+            if difference_in_days == 0:
+                return "Today"
+            elif difference_in_days < 0:
+                return humanize.naturaldelta(obj.due_on - today) + " ago"
+            else:
+                return "in " + humanize.naturaldelta(obj.due_on - today)
+        else:
+            return None
 
 
 class InvoiceDetailSerializer(serializers.ModelSerializer):

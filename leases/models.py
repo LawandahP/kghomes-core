@@ -3,7 +3,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
-
+from django.utils import timezone
 
 from files.models import Files, TimeStamps
 from properties.models import Property
@@ -66,7 +66,9 @@ class Lease(TimeStamps):
 @receiver(post_save, sender=Lease)
 def post_lease_signal(sender, instance, created, *args, **kwargs):
     if created:
-        # ? If Lease is first created create Invoice
+        
+
+        # If Lease is created create Invoice
         invoice = Invoice.objects.create(
             lease=instance,
             property=instance.property,
@@ -74,12 +76,23 @@ def post_lease_signal(sender, instance, created, *args, **kwargs):
             tenant=instance.tenant,
             total_amount=instance.rent,
             due_on=instance.first_rent_date,
-            status=Invoice.UNPAID,
             account = instance.property.account
         )
+
+        # Check conditions and update invoice status
+        today = timezone.now().date()
+        if instance.first_rent_date < today:
+            # If first rent date has passed, set invoice status to Overdue
+            invoice.status = Invoice.OVERDUE
+        elif instance.first_rent_date == today:
+            # If today is the first rent date, set invoice status to Due
+            invoice.status = Invoice.DUE
+        else:
+            # If first rent date is in the future, leave status as Unpaid
+            pass
+        
         invoice.save()
-
-
+        
         bill = Bills.objects.create(
             invoice=invoice,
             item="Rent",
@@ -87,9 +100,7 @@ def post_lease_signal(sender, instance, created, *args, **kwargs):
             quantity=1,
             rate=instance.rent,
         )
-
         bill.save()
-
 
     
 
@@ -98,11 +109,13 @@ class Invoice(TimeStamps):
     UNPAID = 'Unpaid'
     PARTIAL = 'Partially Paid'
     OVERDUE = 'Overdue'
+    DUE = 'Due'
 
     PAYMENT_STATUS_CHOICES = [
         (PAID, 'Fully Paid'),
         (UNPAID, 'Unpaid'),
         (PARTIAL, 'Partially Paid'),
+        (DUE, 'DUE'),
         (OVERDUE, 'Overdue')
     ]
 

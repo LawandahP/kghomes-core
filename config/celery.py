@@ -20,6 +20,11 @@ app.conf.beat_schedule = {
         'task': 'create_recurring_invoices',  
         # Schedule      
         'schedule': crontab(minute='*/1'),
+    },
+
+    'Update Invoice Status': {
+        'task': 'update-invoice-status',
+        'schedule': crontab(minute='*/1')
     }
 }
 
