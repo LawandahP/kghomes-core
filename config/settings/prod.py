@@ -236,8 +236,8 @@ CLOUDINARY_STORAGE = {
 # CELERY_broker_url = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
 # result_backend = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
 
-CELERY_BROKER_URL = os.environ.get("CELERY_BROKER")
-result_backend = os.environ.get("CELERY_BROKER")
+CELERY_BROKER_URL = config("CELERY_BROKER")
+result_backend = config("CELERY_BROKER")
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True  # or False
 
 
@@ -248,7 +248,7 @@ AUTH_BASE_URL = "https://kghomes-auth.vercel.app/api/v1"
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': f'redis://:{config("REDIS_PASSWORD")}@{config("REDIS_HOST")}:{config("REDIS_PORT")}',  # Replace with your Redis server information
+        'LOCATION': f'redis://default:{config("REDIS_PASSWORD")}@{config("REDIS_HOST")}:{config("REDIS_PORT")}',  # Replace with your Redis server information
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
