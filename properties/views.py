@@ -86,7 +86,7 @@ class PropertyCreateListView(generics.GenericAPIView):
         return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count, message=True)
 
        
-
+    
 class PropertyDetailView(generics.GenericAPIView):
     serializer_class = PropertyDetailsSerializer
 

@@ -5,6 +5,7 @@ from rest_framework import serializers
 from files.serializers import FilesSerializer
 from leases.models import Bills, Invoice, Lease
 from properties.models import Property
+from properties.serializers import PropertySerializer
 from units.models import Units
 from units.serializers import UnitSerializer
 from datetime import datetime
@@ -66,20 +67,36 @@ class LeaseSerializer(serializers.ModelSerializer):
 class LeaseDetailsSerializer(serializers.ModelSerializer):
     file = FilesSerializer(many=False, read_only=True)
     unit = UnitSerializer(many=False, read_only=True)
+    expire_in_days = serializers.SerializerMethodField()
+    # property = PropertySerializer(many=False, read_only=True)
 
     class Meta:
         model = Lease
         fields = [
             "id", "property", "unit",             
-            "tenant", "term",             
+            "tenant", "term", "status",        
             "rent", "security_deposit", 
             "rent_frequency", "start_date",       
-            "end_date", "file", "account", "due_day"
+            "end_date", "expire_in_days",
+            "file", "account", "due_day"
         ]
         read_only_fields = [
             "id",
             "account"
         ]
+        
+    def get_expire_in_days(self, obj):
+        today = timezone.now().date()
+        if obj.end_date and today:
+            difference_in_days = (obj.end_date - today).days
+            if difference_in_days == 0:
+                return "Today"
+            elif difference_in_days < 0:
+                return "Expired " + humanize.naturaldelta(obj.end_date - today) + " ago"
+            else:
+                return "Expires in " + humanize.naturaldelta(obj.end_date - today)
+        else:
+            return None
 
 
 class BillsSerializer(serializers.ModelSerializer):

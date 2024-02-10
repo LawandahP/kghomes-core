@@ -1,11 +1,7 @@
-from datetime import datetime
-import json
+from django.db.models import Sum
+
 import math
-from django.conf import settings
-from django.http import Http404
 from django.utils.translation import gettext_lazy as _
-from rest_framework import serializers
-import requests  # Import HttpResponse for Django response
 
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import generics, status
@@ -14,7 +10,7 @@ from bff.utils import UseAuthApi
 
 
 from files.models import Files
-from leases.filters import InvoiceFilter
+from leases.filters import InvoiceFilter, LeaseFilter
 
 from .serializers import BillsSerializer, InvoiceDetailSerializer, InvoiceSerializer, LeaseDetailsSerializer, LeaseSerializer
 from leases.models import Bills, Invoice, Lease
@@ -28,14 +24,17 @@ class CustomPaginator(PageNumberPagination):
 
 
 class CreatViewLease(generics.GenericAPIView):
+    queryset = Lease.objects.all()
     serializer_class = LeaseSerializer
+    filterset_class = LeaseFilter
+    pagination_class = CustomPaginator
     
 
     def get_object(self, request):
         queryset = Lease.objects.filter(account=request.user["account"]["id"])
-        # filter = self.filter_queryset(queryset)
-        # properties = self.paginate_queryset(filter)
-        return queryset
+        filter = self.filter_queryset(queryset)
+        leases = self.paginate_queryset(filter)
+        return leases
 
 
     def post(self, request):
@@ -160,7 +159,7 @@ class CreateInvoiceView(generics.GenericAPIView):
     
     def get_all_invoices(self, request):
         invoices = Invoice.objects.filter(account=request.user["account"]["id"])
-        return len(invoices)
+        return invoices
 
     def get_object(self, request):
         queryset = Invoice.objects.filter(account=request.user["account"]["id"])
@@ -185,12 +184,23 @@ class CreateInvoiceView(generics.GenericAPIView):
 
     def get(self, request):
         try:
-            totalCount = self.get_all_invoices(request)
+            totalCount = len(self.get_all_invoices(request))
             page_size = request.GET.get("size", 10)
             totalpages = math.ceil(totalCount/int(page_size))
             
             invoices = self.get_object(request)  # Assuming this returns a queryset of Django model objects
+            logger.info(type(invoices))
             serializer = self.serializer_class(invoices, many=True)
+             # Calculate sums
+
+            # Filter by status if needed
+            invoices_query = self.get_all_invoices(request)
+            status_filter = request.GET.get("status", None)
+            if status_filter:
+                invoices_query = invoices_query.filter(status=status_filter)
+            total_amount_sum = invoices_query.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            amount_paid_sum = invoices_query.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
+            balance_sum = invoices_query.aggregate(Sum('balance'))['balance__sum'] or 0
 
             # Get all tenant IDs
             tenant_ids = [lease["tenant"] for lease in serializer.data]  
@@ -215,6 +225,8 @@ class CreateInvoiceView(generics.GenericAPIView):
             count = len(modified_invoices)
             
             filteredPages=math.ceil(count/int(page_size)) 
+
+           
             return customResponse(
                 payload=serializer.data, 
                 status=status.HTTP_200_OK, 
@@ -222,52 +234,17 @@ class CreateInvoiceView(generics.GenericAPIView):
                 totalCount=totalCount,
                 totalPages=totalpages,
                 totalFilteredPages=filteredPages,
+
+                totalAmount=total_amount_sum,  
+                totalAmountPaid=amount_paid_sum,
+                totalBalance=balance_sum,
+
                 success=True
             )
         except Exception as e:
             error = {'detail': _(f"{e}")}
             return Response(error, status.HTTP_400_BAD_REQUEST)
         
-    
-    # def get(self, request):
-    #     try:
-    #         leases = self.get_object(request)
-    #         count = len(leases)
-    #         serializer = LeaseDetailsSerializer(leases, many=True)
-
-    #         # Get all tenant IDs
-    #         tenant_ids = [lease["tenant"] for lease in serializer.data]  
-
-    #         # Make a single API request to fetch tenant data for all tenants
-    #         try:
-    #             useAuthApi = UseAuthApi("bulk-user-details")
-    #             tenantData = useAuthApi.fetchBulkUserDetails(tenant_ids)
-    #             logger.info(tenantData)
-    #         except:
-    #             logger.warning("Error when fetching user details")
-    #             # raise Exception(_("An error occured while fetching user details"))
-    #             pass
-
-    #         # Replace tenant IDs with corresponding tenant date
-    #         for lease in serializer.data:
-    #             tenant_id = lease["tenant"]
-    #             for tenant in tenantData:
-    #                 if tenant["id"] == tenant_id:
-    #                     lease['tenant'] = tenant
-    #                     break
-
-    #         return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count, success=True)
-    #     except Lease.DoesNotExist:
-    #         error = {'detail': _("Lease not found")}
-    #         return Response(error, status.HTTP_404_NOT_FOUND)
-    
-
-
-    
-
-
-
-
 class InvoiceDetailView(generics.GenericAPIView):
     serializer_class = InvoiceDetailSerializer
     authentication_classes = []

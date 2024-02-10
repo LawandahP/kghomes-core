@@ -21,7 +21,7 @@ from utils.utils import CustomUUIDField, customResponse
 
 
 UNIT_TYPE_CHOICES = [
-    ('1+ Bedrooms', _('1+ Bedrooms')),
+    ('Apartment', _('Apartment')),
     ('Studio', _('Studio')),
     ('Single Room', _('Single Room')),
     ('Shop', _('Shop')),
@@ -45,7 +45,7 @@ class Units(TimeStamps):
     bedrooms         = models.IntegerField()
     bathrooms        = models.IntegerField()
     amenities        = models.JSONField(blank=True, null=True)
-    monthly_rent     = models.DecimalField(max_digits=8, decimal_places=2, null=True)
+    monthly_rent     = models.IntegerField(null=True)
     unit_type        = models.CharField(max_length=50, choices=UNIT_TYPE_CHOICES, blank=True, null=True)
     property         = models.ForeignKey(Property, related_name="units", on_delete=models.CASCADE, blank=True, null=True)
     account          = models.CharField(max_length=100, blank=True)

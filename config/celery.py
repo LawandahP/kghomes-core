@@ -25,6 +25,11 @@ app.conf.beat_schedule = {
     'Update Invoice Status': {
         'task': 'update-invoice-status',
         'schedule': crontab(minute='*/1')
+    },
+
+    'Update Lease Status': {
+        'task': 'update-lease-status',
+        'schedule': crontab(minute='*/1')
     }
 }
 
