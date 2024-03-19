@@ -6,6 +6,13 @@ services:
             context: .
         # image: voldermort/kghomes:v1
         container_name: backend-core
+        command:
+            - /bin/sh
+            - -c
+            - |
+                python3 manage.py runserver 0.0.0.0:8002
+                celery -A config worker -l INFO
+                celery -A config beat -l INFO
         volumes:
             - .:/usr/src/app
         restart: on-failure
@@ -13,8 +20,7 @@ services:
             - "8002:8002"
         environment:
             - DEBUG=1
-            - CELERY_BROKER=redis://redis:6379/0
-            - CELERY_BACKEND=redis://redis:6379/0
+            - CELERY_BROKER=$CELERY_BROKER
             - POSTGRES_DB=$POSTGRES_DB
             - POSTGRES_USER=$POSTGRES_USER
             - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
@@ -23,43 +29,43 @@ services:
         networks:
             - voldermort-net
 
-    celery-worker:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        container_name: celery-worker
-        command: sh -c "celery -A config worker -l INFO"
-        restart: on-failure
-        volumes:
-            - .:/usr/src/app
-        environment:
-            - DEBUG=1
-            - CELERY_BROKER=redis://redis:6379/0
-            - CELERY_BACKEND=redis://redis:6379/0
-        depends_on:
-            - backend-core
-            - redis
+    # celery-worker:
+    #     build:
+    #         context: .
+    #         dockerfile: Dockerfile
+    #     container_name: celery-worker
+    #     command: sh -c "celery -A config worker -l INFO"
+    #     restart: on-failure
+    #     volumes:
+    #         - .:/usr/src/app
+    #     environment:
+    #         - DEBUG=1
+    #         - CELERY_BROKER=redis://redis:6379/0
+    #         - CELERY_BACKEND=redis://redis:6379/0
+    #     depends_on:
+    #         - backend-core
+    #         - redis
 
-    celery-beat:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        container_name: celery-beat
-        command: sh -c "celery -A config beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler"
-        restart: on-failure
-        volumes:
-            - .:/usr/src/app
-        depends_on:
-            - celery-worker
-            - backend-core
-            - redis
+    # celery-beat:
+    #     build:
+    #         context: .
+    #         dockerfile: Dockerfile
+    #     container_name: celery-beat
+    #     command: sh -c "celery -A config beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+    #     restart: on-failure
+    #     volumes:
+    #         - .:/usr/src/app
+    #     depends_on:
+    #         - celery-worker
+    #         - backend-core
+    #         - redis
 
-    redis:
-        image: "redis:latest"
-        container_name: redis
-        restart: unless-stopped
-        ports:
-            - "6379:6379"
+    # redis:
+    #     image: "redis:latest"
+    #     container_name: redis
+    #     restart: unless-stopped
+    #     ports:
+    #         - "6379:6379"
 
 
 networks:

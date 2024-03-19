@@ -233,9 +233,9 @@ CELERY_BROKER_URL = config("CELERY_BROKER")
 result_backend = config("CELERY_BROKER")
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True  # or False
 
-# AUTH_BACKEND = "http://backend-auth:8001/api/v1/current_user/"
-AUTH_BACKEND = "http://localhost:8001/api/v1/current_user/"
-AUTH_BASE_URL = "http://localhost:8001/api/v1"
+AUTH_BACKEND = "http://backend-auth:8001/api/v1/current_user/"
+# AUTH_BACKEND = "http://localhost:8001/api/v1/current_user/"
+AUTH_BASE_URL = "http://backend-auth:8001/api/v1"
 
 CACHES = {
     'default': {

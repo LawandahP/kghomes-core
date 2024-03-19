@@ -35,6 +35,7 @@ class InvoiceFilter(filters.FilterSet):
     # end_date = filters.DateFilter(field_name="due_on", lookup_expr="lte")
     property = filters.NumberFilter(field_name='property__id')
     tenant = filters.CharFilter(field_name='tenant')
+    lease = filters.CharFilter(field_name="lease__id")
     id = filters.CharFilter(lookup_expr='icontains')
 
 

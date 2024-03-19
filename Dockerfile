@@ -21,6 +21,9 @@ RUN pip install -r requirements.txt --no-cache-dir
 
 COPY . /usr/src/app
 
+# Copy supervisord.conf file into the container
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
 
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONNUNBUFFERRED 1
@@ -28,4 +31,5 @@ ENV PYTHONNUNBUFFERRED 1
 # EXPOSE 8001
 
 # ENTRYPOINT []
-CMD python3 ./manage.py makemigrations && python3 ./manage.py migrate && python3 ./manage.py runserver 0.0.0.0:8002
+# CMD python3 ./manage.py makemigrations && python3 ./manage.py migrate && python3 ./manage.py runserver 0.0.0.0:8002
+CMD ["/usr/bin/supervisord"]

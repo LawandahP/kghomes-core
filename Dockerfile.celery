@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /usr/src/app
 
 # Expose the port if needed
-EXPOSE 8003
+EXPOSE 8002
 
 # Start the Celery worker
-CMD celery -A config worker -l INFO && celery -A config beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+# CMD celery -A config worker -l INFO && celery -A config beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
