@@ -4,12 +4,17 @@ from django.urls import path
 
 # from .type_views import PropertyTypeCreateListView, PropertyTypeDetailView
 
-from .views import PropertyCreateListView, PropertyDetailView, FileUploadView
+from .views import (
+    PropertyCreateListView, PropertyDetailView,
+    FileUploadView, PropertyDashboardView
+)
 
 urlpatterns = [
     path('upload', FileUploadView.as_view(), name="csv"),
     path('properties/',           PropertyCreateListView.as_view(), name="create-property"),
     path('properties/<str:id>', PropertyDetailView.as_view(),     name="property-detail"),
+    path('properties-dashboard', PropertyDashboardView.as_view(),     name="property-dashboard"),
+
 
     # path('my_properties/',  LandlordPropertyListView.as_view(), name="my-properties"),
 

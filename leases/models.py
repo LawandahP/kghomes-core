@@ -99,9 +99,10 @@ def create_deposit_invoice(instance):
 
         deposit_invoice.save()
 
+        line_item, created = LineItem.objects.get_or_create(name="Deposit", account=instance.property.account)
         bill = Bills.objects.create(
             invoice=deposit_invoice,
-            item="Deposit",
+            item=line_item,
             description=deposit_description,
             quantity=1,
             rate=instance.security_deposit,
@@ -213,10 +214,14 @@ def post_lease_signal(sender, instance, created, *args, **kwargs):
             pass
         
         invoice.save()
+
+        # First, try to get or create a LineItem with the name "Rent"
+        line_item, created = LineItem.objects.get_or_create(name="Rent", account=instance.property.account)
+
         
         bill = Bills.objects.create(
             invoice=invoice,
-            item="Rent",
+            item=line_item,
             description=description,
             quantity=quantity,
             rate=rate,
@@ -254,7 +259,6 @@ class Invoice(TimeStamps):
         (BANK, 'Bank')
     ]
 
-
     lease = models.ForeignKey(Lease, on_delete=models.CASCADE, related_name='invoices')
     property = models.ForeignKey(Property, on_delete=models.CASCADE)
     unit = models.ForeignKey(Units, on_delete=models.CASCADE)
@@ -280,16 +284,29 @@ class Invoice(TimeStamps):
 
 
 
+class LineItem(models.Model):
+    name = models.CharField(max_length=255)
+    account = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        db_table = 'lineitems'
+        verbose_name_plural = 'Line Items'
+        
+
 class Bills(TimeStamps):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='invoiceBills')
-    item = models.CharField(max_length=255)
+    # item = models.CharField(max_length=255)
+    item = models.ForeignKey(LineItem, on_delete=models.SET_NULL, blank=True, null=True)
     description = models.TextField(null=True, blank=True)
     quantity = models.IntegerField()
     rate = models.IntegerField()
     amount = models.IntegerField(null=True)
 
     def __str__(self):
-        return self.item
+        return self.item.name
 
     class Meta:
         db_table = 'bills'
@@ -352,4 +369,6 @@ def post_delete_bills_signal(sender, instance, *args, **kwargs):
         if invoice.balance and invoice.balance > 0:
             invoice.balance = invoice.balance - amount
         invoice.save()
+
+
 

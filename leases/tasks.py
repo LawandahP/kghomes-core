@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
-from .models import Lease, Invoice, Bills
+from .models import Lease, Invoice, Bills, LineItem
 from celery import shared_task
 from celery.utils.log import get_task_logger
 
@@ -73,9 +73,11 @@ def generate_invoices():
                 account=lease.property.account
             )
             invoice.save()
+
+            line_item, created = LineItem.objects.get_or_create(name="Rent", account=lease.property.account)
             bill = Bills.objects.create(
                 invoice=invoice,
-                item=f"{lease.rent_frequency} Rent",
+                item=line_item,
                 description=f"{lease.rent_frequency} Rent for {due_date.strftime('%d')  if lease.rent_frequency == 'Daily' else ''} {due_date.strftime('%B')}, {due_date.strftime('%Y')}",
                 quantity=1,
                 rate=lease.rent,

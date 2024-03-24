@@ -129,3 +129,12 @@ class PropertyUpdateSerializer(serializers.ModelSerializer):
 
 
 
+class PropertyDashboardSerializer(serializers.Serializer):
+    total_properties_managed = serializers.IntegerField()
+    total_units = serializers.IntegerField()
+    occupancy_rate = serializers.FloatField()
+    vacancy_rate = serializers.FloatField()
+    # total_rental_income = serializers.FloatField()
+    active_tenants =  serializers.IntegerField()
+    total_deposits_paid = serializers.FloatField()
+    total_deposits = serializers.FloatField()

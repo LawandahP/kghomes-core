@@ -4,7 +4,7 @@ import math
 from django.utils.translation import gettext_lazy as _
 
 from rest_framework.pagination import PageNumberPagination
-from rest_framework import generics, status
+from rest_framework import generics, status, viewsets
 from rest_framework.response import Response
 from bff.utils import UseAuthApi
 
@@ -12,8 +12,11 @@ from bff.utils import UseAuthApi
 from files.models import Files
 from leases.filters import InvoiceFilter, LeaseFilter
 
-from .serializers import BillsSerializer, InvoiceDetailSerializer, InvoiceSerializer, LeaseDetailsSerializer, LeaseSerializer
-from leases.models import Bills, Invoice, Lease
+from .serializers import (
+    BillsSerializer, InvoiceDetailSerializer, LineItemSerializer,
+    InvoiceSerializer, LeaseDetailsSerializer, LeaseSerializer
+)
+from leases.models import Bills, Invoice, Lease, LineItem
 from utils.utils import customResponse, logger
 
 
@@ -321,12 +324,11 @@ class BillsCreateListView(generics.GenericAPIView):
 
     
     def post(self, request):
-        serializer = self.serializer_class(
-            data=request.data, context={'request': request})
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        
         if serializer.is_valid():
             serializer.save()
             return customResponse(
-                payload=serializer.data,
                 message=_("Bill added successfully"),
                 status=status.HTTP_201_CREATED
             )
@@ -371,12 +373,13 @@ class BillDetailView(generics.GenericAPIView):
             serializer.save()
             # audit(request=request, action_flag=f"Updated Bill for {bill.id}")
             return customResponse(
-                payload=serializer.data,
                 message=_("Bill updated successfully"),
                 status=status.HTTP_200_OK
             )
         error = {'detail': serializer.errors}
         return Response(error, status.HTTP_404_NOT_FOUND)
+    
+
 
     
     def delete(self, request, id):
@@ -387,3 +390,19 @@ class BillDetailView(generics.GenericAPIView):
         except Bills.DoesNotExist:
             error = {'detail': _("Bill Not Found")}
             return Response(error, status.HTTP_404_NOT_FOUND)
+ 
+# request.user["account"]["id"]
+# Line Item
+class LineItemViewSet(viewsets.ModelViewSet):
+    serializer_class = LineItemSerializer
+    queryset = LineItem.objects.all()
+    pagination_class = None  # Disable pagination
+    filter_backends = []  # Disable filtering
+
+
+
+    def get_queryset(self):
+        user_account_id = self.request.user["account"]["id"]
+        return LineItem.objects.filter(account=user_account_id)
+    
+    

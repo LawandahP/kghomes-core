@@ -19,7 +19,7 @@ from rest_framework import status, generics
 from rest_framework.views import APIView
 from rest_framework.exceptions import ParseError
 from properties.utils import imageWorker
-from units.models import Units
+from units.models import Units, Assignment
 
 from utils.utils import CustomPagination, compressImage, customResponse, logger
 
@@ -28,7 +28,7 @@ from .models import Property
 from .filters import PropertyFilter
 # from files.models import Files
 
-from .serializers import PropertySerializer, PropertyDetailsSerializer, PropertyUpdateSerializer
+from .serializers import PropertyDashboardSerializer, PropertySerializer, PropertyDetailsSerializer, PropertyUpdateSerializer
 
 
 class PropertyCreateListView(generics.GenericAPIView):
@@ -213,6 +213,67 @@ class FileUploadView(APIView):
         )
 
 
+from django.db.models import Sum, Count
+from .models import Property
+from units.models import Units
+from leases.models import Bills, Invoice, Lease
+from django.utils import timezone
 
 
+
+class PropertyDashboardView(APIView):
+    
+    def get(self, request, format=None):
+        owner_id = request.GET.get('owner_id')
+        property_id = request.GET.get('property_id')
+
+        filters = {}
+        filters['account'] = request.user["account"]["id"]
+        if owner_id:
+            filters['owner'] = owner_id
+        if property_id:
+            filters['id'] = property_id
+
+        properties = Property.objects.filter(**filters) if filters else Property.objects.all()
+        total_properties = properties.count()
+        
+        units = Units.objects.filter(property__in=properties)
+        total_units = units.count()
+
+        occupied_units = Units.objects.filter(property__in=properties, status="Occupied").count()
+        vacant_units = total_units - occupied_units
+
+        vacancy_rate = ((total_units - occupied_units) / total_units) * 100 if total_units else 0
+        occupancy_rate = (occupied_units / total_units) * 100 if total_units else 0
+        
+        total_deposits = Bills.objects.filter(
+            invoice__lease__property__in=properties,
+            item="Deposit"
+        ).aggregate(total_deposit=Sum('amount'))['total_deposit'] or 0
+        
+        total_deposits_paid = Invoice.objects.filter(
+            lease__property__in=properties,
+            invoiceBills__item="Deposit"
+        ).aggregate(
+            total_amount_paid=Sum('amount_paid')
+        )['total_amount_paid'] or 0
+
+        
+        active_tenants = Assignment.objects.filter(property__in=properties, vacated_date__isnull=True).count()
+        
+        data = {
+            'total_properties': total_properties,
+            'units': {
+                "total": total_units,
+                "occupied": occupied_units,
+                "vacant": vacant_units
+            },
+            'occupancy_rate': occupancy_rate,
+            'active_tenants': active_tenants,
+            'vacancy_rate': vacancy_rate,
+            'total_deposits': total_deposits,
+            'total_deposits_paid': total_deposits_paid
+        }
+
+        return Response(data, status=200)
 

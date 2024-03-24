@@ -54,7 +54,7 @@ class PaymentListCreate(generics.GenericAPIView):
             try:
                 useAuthApi = UseAuthApi("bulk-user-details")
                 tenantData = useAuthApi.fetchBulkUserDetails(tenant_ids)
-                logger.info(tenantData)
+                # logger.info(tenantData)
             except:
                 logger.warning("Error when fetching user details")
                 # raise Exception(_("An error occured while fetching user details"))

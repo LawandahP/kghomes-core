@@ -3,9 +3,8 @@ import humanize
 from rest_framework import serializers
 
 from files.serializers import FilesSerializer
-from leases.models import Bills, Invoice, Lease
+from leases.models import Bills, Invoice, Lease, LineItem
 from properties.models import Property
-from properties.serializers import PropertySerializer
 from units.models import Units
 from units.serializers import UnitSerializer
 from datetime import datetime
@@ -99,20 +98,55 @@ class LeaseDetailsSerializer(serializers.ModelSerializer):
             return None
 
 
+class LineItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LineItem
+        fields = '__all__'
+        
+from utils.utils import customResponse, logger
+
 class BillsSerializer(serializers.ModelSerializer):
+    item = serializers.JSONField()
+
+    class Meta:
+        model = Bills
+        fields = ["invoice", "item", "quantity", "description", "rate", "amount"]
+
+    def create(self, validated_data):
+        item_data = validated_data.pop('item')
+        item_id = item_data.get('id')
+
+        item = LineItem.objects.get(id=item_id)
+        invoice = validated_data.pop("invoice")
+
+        bills = Bills.objects.create(
+            **validated_data, 
+            invoice=invoice,
+            item=item
+        )   
+        # audit(request=request, action_flag="created fees for")         
+        return bills
+    
+    def update(self, instance, validated_data):
+        item_data = validated_data.pop('item', None)
+        if item_data:
+            item_id = item_data.get('id')
+            item = LineItem.objects.get(id=item_id)
+            instance.item = item
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
+
+
+class BillDetailSerializer(serializers.ModelSerializer):
+    item = LineItemSerializer()
+    
     class Meta:
         model = Bills
         fields = ["id", "invoice", "item", "quantity", "description", "rate", "amount"]
-
-        def create(self, validated_data):
-            request = self.context['request']
-            invoice = validated_data.pop("invoice")
-            invoice = Invoice.objects.get(id=invoice)
-
-            bills = Bills.objects.create(**validated_data, invoice=invoice)   
-            # audit(request=request, action_flag="created fees for")         
-            return bills
-
 
 class InvoiceSerializer(serializers.ModelSerializer):
     due_in_days = serializers.SerializerMethodField()
@@ -140,7 +174,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
 class InvoiceDetailSerializer(serializers.ModelSerializer):
     unit = UnitSerializer(many=False, read_only=True) 
-    invoiceBills = BillsSerializer(many=True, read_only=True)
+    invoiceBills = BillDetailSerializer(many=True, read_only=True)
 
     class Meta:
         model = Invoice
