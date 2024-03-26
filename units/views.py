@@ -165,7 +165,16 @@ class AssignUnitToTenant(generics.GenericAPIView):
             error = {'detail': _("Unit not found")}
             return Response(error, status.HTTP_404_NOT_FOUND)
 
-
+    def getTenants(self, assignments_data):
+        try:
+            # Get all tenant IDs
+            tenant_ids = [assignment["tenant"] for assignment in assignments_data] 
+            tenant_ids = set(tenant_ids)
+            useAuthApi = UseAuthApi("bulk-user-details")
+            tenantData = useAuthApi.fetchBulkUserDetails(tenant_ids)
+            return tenantData
+        except:
+            logger.warning("Error when fetching user details")
     
     def get(self, request, id):
         current_assignment = request.GET.get("assignment", False)
@@ -183,12 +192,16 @@ class AssignUnitToTenant(generics.GenericAPIView):
             
             modified_assignments = []
 
+
+            # Make a single API request to fetch tenant data for all tenants
+            tenantData = self.getTenants(assignments_data)
+            # logger.info(tenantData)
             # fetch tenant details
             for assignment in assignments_data:
-                tenant_id = assignment['tenant']
-                useAuthApi = UseAuthApi("user-details")
-                tenantData = useAuthApi.fetchUserDetails(tenant_id)
-                assignment['tenant'] = tenantData
+                tenant_id = assignment["tenant"]
+                for tenant in tenantData:
+                    if tenant["id"] == tenant_id:
+                        assignment['tenant'] = tenant
 
                 # Check if the assignment should be appended to modified_assignments
                 if current_assignment == "current":
@@ -201,8 +214,6 @@ class AssignUnitToTenant(generics.GenericAPIView):
         except:
             # Get property Tenants
             try:
-                # properti = Property.objects.get(id=id)
-                # logger.warn(properti)
                 tenants = Assignment.objects.filter(property=id)
 
                 # Filter tenants where vacated_date is null
@@ -211,26 +222,25 @@ class AssignUnitToTenant(generics.GenericAPIView):
 
                 serializer = self.serializer_class(tenants, many=True)
                 
-                tenants_data = serializer.data
+                assignments_data = serializer.data
                 
                 modified_assignments = []
 
                 # fetch tenant details
-                for assignment in tenants_data:
-                    tenant_id = assignment['tenant']
-                    useAuthApi = UseAuthApi("user-details")
-                    tenantData = useAuthApi.fetchUserDetails(tenant_id)
-                    assignment['tenant'] = tenantData
-                    modified_assignments.append(assignment)
-                return customResponse(payload=modified_assignments, count=active_tenants_count, status=status.HTTP_200_OK)
-            except:
-                error = {'detail': _("Property not found")}
-                return Response(error, status.HTTP_404_NOT_FOUND)
-            
+                tenantData = self.getTenants(assignments_data)
+                # logger.info(tenantData)
 
-            # error = {'detail': _("Unit not found")}
-            # return Response(error, status.HTTP_404_NOT_FOUND)
-        
+                for assignment in assignments_data:
+                    tenant_id = assignment["tenant"]
+                    for tenant in tenantData:
+                        tenant["id"] == tenant_id
+                        assignment['tenant'] = tenant
+                        modified_assignments.append(assignment)
+                return customResponse(payload=modified_assignments, count=active_tenants_count, status=status.HTTP_200_OK)
+            except Exception as e:
+                logger.warning(f"{e}")
+                error = {'detail': _("An error has occured!")}
+                return Response(error, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     
     

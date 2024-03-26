@@ -226,12 +226,12 @@ CLOUDINARY_STORAGE = {
 
 # celery configuration
 # Configure Celery to use the shared Celery worker container
-# CELERY_broker_url = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
-# result_backend = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
+CELERY_broker_url = os.environ.get("CELERY_BROKER_LOCAL", "redis://redis:6379/0")
+result_backend = os.environ.get("CELERY_BROKER_LOCAL", "redis://redis:6379/0")
 
-CELERY_BROKER_URL = config("CELERY_BROKER")
-result_backend = config("CELERY_BROKER")
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True  # or False
+# CELERY_BROKER_URL = config("CELERY_BROKER")
+# result_backend = config("CELERY_BROKER")
+# CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True  # or False
 
 # AUTH_BACKEND = "http://backend-auth:8001/api/v1/current_user/"
 AUTH_BACKEND = "http://localhost:8001/api/v1/current_user/"
@@ -241,7 +241,8 @@ AUTH_BASE_URL = "http://localhost:8001/api/v1"
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': f'redis://default:{config("REDIS_PASSWORD")}@{config("REDIS_HOST")}:{config("REDIS_PORT")}',  # Replace with your Redis server information
+        'LOCATION': "redis://default:admin@localhost:6379",
+        # 'LOCATION': f'redis://default:{config("REDIS_PASSWORD")}@{config("REDIS_HOST")}:{config("REDIS_PORT")}', 
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }

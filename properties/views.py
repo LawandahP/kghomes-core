@@ -258,7 +258,6 @@ class PropertyDashboardView(APIView):
             total_amount_paid=Sum('amount_paid')
         )['total_amount_paid'] or 0
 
-        
         active_tenants = Assignment.objects.filter(property__in=properties, vacated_date__isnull=True).count()
         
         data = {

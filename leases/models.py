@@ -298,7 +298,6 @@ class LineItem(models.Model):
 
 class Bills(TimeStamps):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='invoiceBills')
-    # item = models.CharField(max_length=255)
     item = models.ForeignKey(LineItem, on_delete=models.SET_NULL, blank=True, null=True)
     description = models.TextField(null=True, blank=True)
     quantity = models.IntegerField()
@@ -324,12 +323,10 @@ def post_bills_signal(sender, instance, created, *args, **kwargs):
         
         invoice = instance.invoice
 
-        if invoice.total_amount:
-            invoice.total_amount = invoice.total_amount + int(amount)
+        # if invoice.total_amount:
+        invoice.total_amount = invoice.total_amount + int(amount)
 
         if invoice.total_amount and invoice.balance is not None:
-            # invoice.total_amount = invoice.total_amount + int(amount)
-            #? if invoice balance is > 1 add bill amount😎💸💸
             if invoice.balance is None:
                 invoice.balance = 0
             if invoice.balance > 0:
