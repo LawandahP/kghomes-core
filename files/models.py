@@ -6,8 +6,8 @@ from utils.utils import CustomUUIDField
 
 # Create your models here.
 class TimeStamps(models.Model):
-    created_at = models.DateTimeField(default=timezone.now, null=True, blank=True)
-    updated_at = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateField(auto_now=True, null=True, blank=True)
 
     class Meta:
         abstract = True

@@ -12,36 +12,49 @@ class PaymentSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'account',
-            'PayFor',
-            'PaidFor',
-            'Invoice',
-            'PhoneNumber',
-            'MpesaReceiptNumber',
-            'Amount',
-            'CheckoutRequestID',
-            'TransactionDate',
+            'tenant',
+            'pay_for',
+            'invoice',
+            'phonenumber',
+            'payment_method',
+            'mpesa_receipt_number',
+            'amount_paid',
+            'checkout_request_id',
+            'payment_date',
+            'payment_time',
+            'notes'
         ]
 
         read_only_fields = [
             "id",
-            "account",
-            "TransactionDate"
+            "account"
         ]
 
 
 class PaymentDetailsSerializer(serializers.ModelSerializer):
-    Invoice = InvoiceSerializer(many=False, read_only=True) 
+    invoice = InvoiceSerializer(many=False, read_only=True) 
+    payment_time = serializers.SerializerMethodField()
     class Meta:
         model = Payment
         fields = [
             'id',
             'account',
-            'PayFor',
-            'PaidFor',
-            'Invoice',
-            'PhoneNumber',
-            'MpesaReceiptNumber',
-            'Amount',
-            'CheckoutRequestID',
-            'TransactionDate',
+            'tenant',
+            'pay_for',
+            'invoice',
+            'phonenumber',
+            'payment_method',
+            'mpesa_receipt_number',
+            'amount_paid',
+            'checkout_request_id',
+            'payment_date',
+            'payment_time',
+            'notes'
         ]
+    
+    def get_payment_time(self, obj):
+        payment_time = obj.payment_time
+        if payment_time:
+            return payment_time.strftime("%I:%M %p")
+        return None
+

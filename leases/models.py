@@ -302,6 +302,8 @@ class Bills(TimeStamps):
     description = models.TextField(null=True, blank=True)
     quantity = models.IntegerField()
     rate = models.IntegerField()
+    # amount_paid = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    # balance = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     amount = models.IntegerField(null=True)
 
     def __str__(self):
