@@ -11,8 +11,7 @@ from .models import Property
 class PropertySerializer(serializers.ModelSerializer):
     # amenities = serializers.StringRelatedField(many=True, read_only=True)
     images = FilesSerializer(many=True, read_only=True)
-    amenities = serializers.JSONField()
-    owner = serializers.JSONField()
+    amenities = serializers.JSONField(required=False)
     
     class Meta:
         model = Property
@@ -27,9 +26,7 @@ class PropertySerializer(serializers.ModelSerializer):
         ]
     
     def create(self, validated_data):
-        location = validated_data.pop('address')
-        owner = validated_data.pop('owner')
-        owner = owner["id"]
+        location = validated_data.pop('address', None)
 
         if location:
             address = location["address"]
@@ -37,9 +34,8 @@ class PropertySerializer(serializers.ModelSerializer):
             address = None
 
         return Property.objects.create(
-            **validated_data, 
-            address=address, 
-            owner=owner
+            **validated_data,
+            address=address
         )
 
     

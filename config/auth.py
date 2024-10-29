@@ -44,12 +44,12 @@ class CustomBackend(BaseBackend):
                 # Try to retrieve the user with the given user_id
                 try:
                     headers = {'Authorization': f'Bearer {token}'}
-                    res = requests.get(settings.AUTH_BACKEND, headers=headers)
+                    res = requests.get(f"{settings.AUTH_BASE_URL}/users/current/", headers=headers)
                     user = res.json()
+                    logger.info(user)
                     if res.status_code == 200:
                         logger.info("USER AUTHENTICATED SUCCESSFULLY")
-                        user['data']['payload']['is_authenticated'] = True
-                        user = user['data']['payload']
+                        user['is_authenticated'] = True
                         return user, self
                 except:
                     logger.error('Failed to get user credentials')

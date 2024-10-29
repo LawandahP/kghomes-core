@@ -1,18 +1,20 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 
 # from property.amenity_views import AmenitiesCreateListView, AmenitiesDetailView
 
-# from .type_views import PropertyTypeCreateListView, PropertyTypeDetailView
 
 from .views import (
-    PropertyCreateListView, PropertyDetailView,
+    PropertyViewSet,
     FileUploadView, PropertyDashboardView
 )
 
+router = DefaultRouter()
+router.register(r'properties', PropertyViewSet, basename='tenants')
+
 urlpatterns = [
+    path('', include(router.urls)),
     path('upload', FileUploadView.as_view(), name="csv"),
-    path('properties/',           PropertyCreateListView.as_view(), name="create-property"),
-    path('properties/<str:id>', PropertyDetailView.as_view(),     name="property-detail"),
     path('properties-dashboard', PropertyDashboardView.as_view(),     name="property-dashboard"),
 
 

@@ -53,7 +53,6 @@ class Payment(TimeStamps):
     def __str__(self):
         return f"Payment {self.id} by Tenant {self.tenant}"
 
-
     class Meta:
         db_table = 'payments'
         verbose_name_plural = 'Payments'

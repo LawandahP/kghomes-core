@@ -21,6 +21,7 @@ from rest_framework.exceptions import ParseError
 from properties.utils import imageWorker
 from units.models import Units, Assignment
 
+from utils.responseBody import ResponseBody
 from utils.utils import CustomPagination, compressImage, customResponse, logger
 
 
@@ -31,72 +32,186 @@ from .filters import PropertyFilter
 from .serializers import PropertyDashboardSerializer, PropertySerializer, PropertyDetailsSerializer, PropertyUpdateSerializer
 
 
-class PropertyCreateListView(generics.GenericAPIView):
-    queryset = Property.objects.all()  # Set your queryset here
-    pagination_class = CustomPagination
-    serializer_class = PropertySerializer
-    permission_classes = [IsRealtor]
+# class PropertyCreateListView(generics.GenericAPIView):
+#     queryset = Property.objects.all()  # Set your queryset here
+#     pagination_class = CustomPagination
+#     serializer_class = PropertySerializer
+#     permission_classes = [IsRealtor]
 
-    filterset_class = PropertyFilter
-    search_fields = ['name']
+#     filterset_class = PropertyFilter
+#     search_fields = ['name']
 
 
-    def get_object(self, request):
-        queryset = Property.objects.filter(account=request.user["account"]["id"])
-        filter = self.filter_queryset(queryset)
-        properties = self.paginate_queryset(filter)
-        return properties
+#     def get_object(self, request):
+#         queryset = Property.objects.filter(account=request.user["account"]["id"])
+#         filter = self.filter_queryset(queryset)
+#         properties = self.paginate_queryset(filter)
+#         return properties
 
-    def post(self, request):
-        data = request.data
-        user = request.user
+#     def post(self, request):
+#         data = request.data
+#         user = request.user
         
-        serializer = self.serializer_class(
-            data=data, context={'request': request})
-        if serializer.is_valid():
-            account = user["account"]["id"]
-            name = data['name']
-            property = serializer.save(account=account)
+#         serializer = self.serializer_class(
+#             data=data, context={'request': request})
+#         if serializer.is_valid():
+#             account = user["account"]["id"]
+#             name = data['name']
+#             property = serializer.save(account=account)
             
-            try:
-                with ThreadPoolExecutor(max_workers=3) as executor:
-                    executor.submit(imageWorker, request, property)
-                logger.info("Property images Compressed and Uploaded Successfully")
-                return customResponse(
-                    payload=serializer.data,
-                    message=f"Property {name} Registered Successfully.",
-                    status=status.HTTP_201_CREATED
-                )
+#             try:
+#                 with ThreadPoolExecutor(max_workers=3) as executor:
+#                     executor.submit(imageWorker, request, property)
+#                 logger.info("Property images Compressed and Uploaded Successfully")
+#                 return customResponse(
+#                     payload=serializer.data,
+#                     message=f"Property {name} Registered Successfully.",
+#                     status=status.HTTP_201_CREATED
+#                 )
                 
-            except Exception as e:
-                return Response({"detail": f"An error occurred: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        error = {'detail': serializer.errors}
-        return Response(error, status.HTTP_400_BAD_REQUEST)
+#             except Exception as e:
+#                 return Response({"detail": f"An error occurred: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#         error = {'detail': serializer.errors}
+#         return Response(error, status.HTTP_400_BAD_REQUEST)
 
     
         
-    def get(self, request):
-        try:
-            properties = self.get_object(request)
-            count = len(properties)
-            serializer = PropertyDetailsSerializer(properties, many=True)
-        except Http404 as e:
-            error = {'detail': str(e)}
-            return Response(error, status.HTTP_404_NOT_FOUND)
-        return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count, message=True)
+#     def get(self, request):
+#         try:
+#             properties = self.get_object(request)
+#             count = len(properties)
+#             serializer = PropertyDetailsSerializer(properties, many=True)
+#         except Http404 as e:
+#             error = {'detail': str(e)}
+#             return Response(error, status.HTTP_404_NOT_FOUND)
+#         return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count, message=True)
 
        
     
-class PropertyDetailView(generics.GenericAPIView):
-    serializer_class = PropertyDetailsSerializer
+# class PropertyDetailView(generics.GenericAPIView):
+#     serializer_class = PropertyDetailsSerializer
 
-    def get_object(self, request, id):
-        return Property.objects.get(id=id)
+#     def get_object(self, request, id):
+#         return Property.objects.get(id=id)
 
-    # @method_decorator(group_required('REALTOR', 'LANDLORD'))
-    def get(self, request, id):
+#     # @method_decorator(group_required('REALTOR', 'LANDLORD'))
+#     def get(self, request, id):
+#         try:
+#             # get total units
+#             units = Units.objects.filter(property=id)
+#             occupiedUnits = Units.objects.filter(property=id, status="Occupied")
+#             vacantUnits = Units.objects.filter(property=id, status="Vacant")
+
+#             totalUnits = len(units)
+#             totalVacantUnits = len(vacantUnits)
+#             totalOccupiedUnits = len(occupiedUnits)
+#             # get the property details
+#             propertyData = self.get_object(request, id)
+#             serializer = self.serializer_class(propertyData, many=False)
+            
+#             useAuthApi = UseAuthApi("user-details")
+#             ownerData = useAuthApi.fetchUserDetails(serializer.data["owner"])
+#             # serializer.data['owner'] = ownerData
+#             serializer_data_copy = copy.deepcopy(serializer.data)
+
+#             # Assign ownerData to the copied data
+#             serializer_data_copy['owner'] = ownerData
+            
+#         except Property.DoesNotExist:
+#             error = {'detail': "Property not found"}
+#             return Response(error, status.HTTP_404_NOT_FOUND)
+        
+#         return customResponse(
+#             payload=serializer_data_copy, totalUnits=totalUnits, 
+#             vacantUnits=totalVacantUnits, occupiedUnits=totalOccupiedUnits,
+#             status=status.HTTP_200_OK
+#         )
+
+#     # @method_decorator(group_required('REALTOR'))
+#     def patch(self, request, id):
+#         try:
+#             property = self.get_object(request=request, id=id)
+#             serializer = PropertyUpdateSerializer(property, data=request.data, partial=True)
+
+#             if serializer.is_valid():
+#                 serializer.save()
+#                 #     audit(request=request, action_flag=f"Updated {request.data} for Property {property.name}")
+#                 return customResponse(
+#                     payload=serializer.data,
+#                     message=_("Property updated successfully"),
+#                     status=status.HTTP_200_OK
+#                 )
+#             error = {'detail': serializer.errors}
+#             return Response(error, status.HTTP_400_BAD_REQUEST)
+#         except Property.DoesNotExist:
+#             error = {'detail': _("Property not found")}
+#             return Response(error, status.HTTP_404_NOT_FOUND)
+
+   
+#     # @method_decorator(group_required('REALTOR'))
+#     def delete(self, request, id):
+#         try:
+#             property = self.get_object(request=request, id=id)
+#             property.delete()
+#             return customResponse(message=_("Property deleted successfully"), status=status.HTTP_200_OK)
+#         except Property.DoesNotExist:
+#             error = {'detail': _("Property Not Found")}
+#             return Response(error, status.HTTP_404_NOT_FOUND)
+        
+
+from rest_framework import viewsets
+from rest_framework.decorators import action
+
+class PropertyViewSet(ResponseBody, viewsets.ModelViewSet):
+    queryset = Property.objects.all()
+    serializer_class = PropertySerializer
+    permission_classes = [IsRealtor]
+    pagination_class = CustomPagination
+    filterset_class = PropertyFilter
+    search_fields = ['name']
+
+    def get_serializer_class(self):
+        if action == "partial-update":
+            return PropertyUpdateSerializer
+        return super().get_serializer_class()
+    
+    def get_queryset(self):
+        return Property.objects.filter(account=self.request.user["account"]["id"])
+
+    def create(self, request, *args, **kwargs):
         try:
-            # get total units
+            data = request.data
+            user = request.user
+            
+            serializer = self.get_serializer(data=data, context={'request': request})
+            if serializer.is_valid():
+                account = user["account"]["id"]
+                name = data['name']
+                property = serializer.save(account=account)
+                
+                try:
+                    with ThreadPoolExecutor(max_workers=3) as executor:
+                        executor.submit(imageWorker, request, property)
+                    logger.info("Property images Compressed and Uploaded Successfully")
+                    
+                    return Response(
+                        {
+                            "message": f"Property {name} Registered Successfully.",
+                            "payload": serializer.data
+                        },
+                        status=status.HTTP_201_CREATED
+                    )
+                    
+                except Exception as e:
+                    return Response({"detail": f"An error occurred: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            error = {'detail': serializer.errors}
+            return Response(error, status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"detail": f"An error occurred: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def retrieve(self, request, *args, **kwargs):
+        id = kwargs.get('pk')
+        try:
             units = Units.objects.filter(property=id)
             occupiedUnits = Units.objects.filter(property=id, status="Occupied")
             vacantUnits = Units.objects.filter(property=id, status="Vacant")
@@ -104,16 +219,13 @@ class PropertyDetailView(generics.GenericAPIView):
             totalUnits = len(units)
             totalVacantUnits = len(vacantUnits)
             totalOccupiedUnits = len(occupiedUnits)
-            # get the property details
-            propertyData = self.get_object(request, id)
-            serializer = self.serializer_class(propertyData, many=False)
+
+            propertyData = self.get_object()
+            serializer = self.get_serializer(propertyData)
             
             useAuthApi = UseAuthApi("user-details")
             ownerData = useAuthApi.fetchUserDetails(serializer.data["owner"])
-            # serializer.data['owner'] = ownerData
             serializer_data_copy = copy.deepcopy(serializer.data)
-
-            # Assign ownerData to the copied data
             serializer_data_copy['owner'] = ownerData
             
         except Property.DoesNotExist:
@@ -126,37 +238,6 @@ class PropertyDetailView(generics.GenericAPIView):
             status=status.HTTP_200_OK
         )
 
-    # @method_decorator(group_required('REALTOR'))
-    def patch(self, request, id):
-        try:
-            property = self.get_object(request=request, id=id)
-            serializer = PropertyUpdateSerializer(property, data=request.data, partial=True)
-
-            if serializer.is_valid():
-                serializer.save()
-                #     audit(request=request, action_flag=f"Updated {request.data} for Property {property.name}")
-                return customResponse(
-                    payload=serializer.data,
-                    message=_("Property updated successfully"),
-                    status=status.HTTP_200_OK
-                )
-            error = {'detail': serializer.errors}
-            return Response(error, status.HTTP_400_BAD_REQUEST)
-        except Property.DoesNotExist:
-            error = {'detail': _("Property not found")}
-            return Response(error, status.HTTP_404_NOT_FOUND)
-
-   
-    # @method_decorator(group_required('REALTOR'))
-    def delete(self, request, id):
-        try:
-            property = self.get_object(request=request, id=id)
-            property.delete()
-            return customResponse(message=_("Property deleted successfully"), status=status.HTTP_200_OK)
-        except Property.DoesNotExist:
-            error = {'detail': _("Property Not Found")}
-            return Response(error, status.HTTP_404_NOT_FOUND)
-        
 
 
 

@@ -63,7 +63,7 @@ class Lease(TimeStamps):
     end_date         = models.DateField(blank=True, null=True)
     file             = models.ForeignKey(Files, on_delete=models.CASCADE, null=True, blank=True)
     account          = models.CharField(max_length=50)
-    status           = models.CharField(choices=LEASE_STATUS, default=ACTIVE)
+    status           = models.CharField(max_length=255, choices=LEASE_STATUS, default=ACTIVE)
 
     def __str__(self):
         return self.tenant

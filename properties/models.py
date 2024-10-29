@@ -24,7 +24,7 @@ class Property(TimeStamps):
     
     slug = models.SlugField(blank=True, null=True)
     images = models.ManyToManyField(Files, blank=True, related_name="property_images")
-    owner = models.CharField(blank=True, null=True)
+    owner = models.CharField(blank=True, null=True, max_length=255)
     account = models.CharField(max_length=100, blank=True)
 
     def __str__(self):
