@@ -1,7 +1,10 @@
 import math
 import uuid
+import mimetypes
+import csv
 import requests
 from io import BytesIO
+from openpyxl import Workbook, load_workbook
 
 import re
 import random
@@ -10,14 +13,14 @@ import logging
 from datetime import datetime
 
 from django.core.files.uploadedfile import InMemoryUploadedFile
-
+from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.conf import settings
 from django.db import models
 
 
-from rest_framework import serializers
+from rest_framework import serializers, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
@@ -183,14 +186,33 @@ def sendRegisterEmail(data):
     return response.json()
 
 
+def upload_data(account, file, model, fields):
+    # Guess the MIME type of the file based on its name
+    mime_type, v = mimetypes.guess_type(file.name)
+    if mime_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+        # Process Excel file
+        wb = load_workbook(file)
+        ws = wb.active
+
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            try:
+                model.objects.create(**dict(zip(fields, row)), account=account)
+            except Exception as e:
+                return Response({"detail": _(f"{e}")}, status=status.HTTP_400_BAD_REQUEST)
+    elif mime_type == 'text/csv':
+        # Process CSV file
+        decoded_file = file.read().decode('utf-8').splitlines()
+        reader = csv.reader(decoded_file)
+
+        next(reader, None)  # Skip the header
+        for row in reader:
+            try:
+                model.objects.create(**dict(zip(fields, row)), account=account)
+            except Exception as e:
+                return Response({"detail": _(f"{e}")}, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        return Response({"detail": _("Invalid file type")}, status=status.HTTP_400_BAD_REQUEST)
+    
+    return Response({"message": _("File uploaded and data added successfully")}, status=status.HTTP_201_CREATED)
 
 
-if __name__ == '__main__':
-    CustomUUIDField()
-    sendRegisterEmail()
-    convertDate()
-    compressImage()
-    generateOTP()
-    CustomPagination
-    GeneratePassword
-    logger

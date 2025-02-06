@@ -1,9 +1,12 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 
-from .views import CreatViewUnits, AssignUnitToTenant, UnitDetailView
+from .views import UnitViewSet, AssignUnitToTenant
+
+router = DefaultRouter()
+router.register(r'units', UnitViewSet, basename='units')
 
 urlpatterns = [
-    path('units/', CreatViewUnits.as_view(), name="create-units"),
-    path('units/<str:id>', UnitDetailView.as_view(), name="unit-detail"),
+    path('', include(router.urls)),
     path('assign-unit/<str:id>', AssignUnitToTenant.as_view(), name="assign-unit"),
 ]

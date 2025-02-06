@@ -1,7 +1,7 @@
 from django.urls import path
 
 from leases.views import (
-    CreatViewLease, LeaseDetailView, 
+    LeaseViewSet, 
     CreateInvoiceView, InvoiceDetailView,
     BillsCreateListView, BillDetailView,
     LineItemViewSet
@@ -12,12 +12,10 @@ from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
 router.register(r'line-items', LineItemViewSet)
+router.register(r'leases', LeaseViewSet, basename="leases")
 
 
 urlpatterns = [
-    path('leases/',  CreatViewLease.as_view(), name="leases"),
-    path('lease-details/<str:id>', LeaseDetailView.as_view(), name="lease_details"),
-
     path('invoices/',  CreateInvoiceView.as_view(), name="invoices"),
     path('invoice/<int:id>', InvoiceDetailView.as_view(), name="invoices-detail"),
 

@@ -19,7 +19,7 @@ class UnitFilter(filters.FilterSet):
 
     # start_date = filters.DateFilter(field_name="due_on", lookup_expr="gte")
     # end_date = filters.DateFilter(field_name="due_on", lookup_expr="lte")
-    property_id = filters.NumberFilter(field_name='property__id')
+    property = filters.NumberFilter(field_name='property__id')
     unit_number = filters.CharFilter(lookup_expr='icontains')
 
     class Meta:
@@ -27,7 +27,7 @@ class UnitFilter(filters.FilterSet):
         fields = (
             "status",
             "unit_number",
-            "property_id"
+            "property"
         )
 
 

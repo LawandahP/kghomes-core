@@ -2,6 +2,7 @@ from django.db.models import Sum
 
 import math
 from django.utils.translation import gettext_lazy as _
+from rest_framework import viewsets
 
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import generics, status, viewsets
@@ -26,67 +27,58 @@ class CustomPaginator(PageNumberPagination):
     page_size_query_param = 'size'
 
 
-class CreatViewLease(generics.GenericAPIView):
+
+class LeaseViewSet(viewsets.ModelViewSet):
     queryset = Lease.objects.all()
     serializer_class = LeaseSerializer
     filterset_class = LeaseFilter
     pagination_class = CustomPaginator
-    
 
-    def get_object(self, request):
-        queryset = Lease.objects.filter(account=request.user["account"]["id"])
-        filter = self.filter_queryset(queryset)
-        leases = self.paginate_queryset(filter)
-        return leases
+    def get_queryset(self):
+        return Lease.objects.filter(account=self.request.user["account"]["id"])
 
-
-    def post(self, request):
+    def create(self, request, *args, **kwargs):
         data = request.data
         user = request.user
+        serializer = self.get_serializer(data=data, context={'request': request})
         
-        serializer = self.serializer_class(data=data, context={'request': request})
         if serializer.is_valid():
             account = user["account"]["id"]
             
             if request.FILES:
                 files = request.FILES.getlist("file")
-                
                 for i in files:
                     file_instance = Files(file_url=i)
                     file_instance.save()
                     serializer.save(file=file_instance, account=account)
 
-            serializer.save(account=account)            
+            serializer.save(account=account)
             
             return customResponse(
-                # payload=serializer.data,
                 message=_("Lease Created Successfully."),
                 status=status.HTTP_201_CREATED
             )
         error = {'detail': serializer.errors}
         return Response(error, status.HTTP_400_BAD_REQUEST)
-        
-    def get(self, request):
+
+    def list(self, request, *args, **kwargs):
         try:
-            leases = self.get_object(request)
-            count = len(leases)
+            leases = self.get_queryset()
+            page = self.paginate_queryset(leases)
+            if page is not None:
+                serializer = LeaseDetailsSerializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+
             serializer = LeaseDetailsSerializer(leases, many=True)
-            # logger.warning(serializer.data)
-            # Get all tenant IDs
-            tenant_ids = [lease["tenant"] for lease in serializer.data]  
-    
-            # Make a single API request to fetch tenant data for all tenants
+            tenant_ids = [lease["tenant"] for lease in serializer.data]
+            
             try:
                 useAuthApi = UseAuthApi("bulk-user-details")
                 tenantData = useAuthApi.fetchBulkUserDetails(tenant_ids)
-       
             except:
                 logger.warning("Error when fetching user details")
-                # raise Exception(_("An error occured while fetching user details"))
                 pass
 
-            # Replace tenant IDs with corresponding tenant date
-            
             for lease in serializer.data:
                 tenant_id = lease["tenant"]
                 for tenant in tenantData:
@@ -94,58 +86,11 @@ class CreatViewLease(generics.GenericAPIView):
                         lease['tenant'] = tenant
                         break
 
-            return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=count, success=True)
+            return customResponse(payload=serializer.data, status=status.HTTP_200_OK, count=len(serializer.data), success=True)
         except Lease.DoesNotExist:
             error = {'detail': _("Lease not found")}
             return Response(error, status.HTTP_404_NOT_FOUND)
 
-
-
-class LeaseDetailView(generics.GenericAPIView):
-    serializer_class = LeaseSerializer
-
-    def get_object(self, request, id):
-        return Lease.objects.get(id=id)
- 
-    def get(self, request, id):
-        try:
-            lease = self.get_object(request, id)
-            serializer = self.serializer_class(lease, many=False)
-        except Lease.DoesNotExist:
-            error = {'detail': "Lease not found"}
-            return Response(error, status.HTTP_404_NOT_FOUND)
-        return customResponse(payload=serializer.data, status=status.HTTP_200_OK)
-
-    # @method_decorator(group_required('REALTOR'))
-    def patch(self, request, id):
-        try:
-            lease = self.get_object(request=request, id=id)
-            serializer = self.serializer_class(lease, data=request.data, partial=True)
-
-            if serializer.is_valid():
-                serializer.save()
-                #     audit(request=request, action_flag=f"Updated {request.data} for Lease {lease.name}")
-                return customResponse(
-                    payload=serializer.data,
-                    message=_("Lease updated successfully"),
-                    status=status.HTTP_200_OK
-                )
-            error = {'detail': serializer.errors}
-            return Response(error, status.HTTP_400_BAD_REQUEST)
-        except Lease.DoesNotExist:
-            error = {'detail': _("Lease not found")}
-            return Response(error, status.HTTP_404_NOT_FOUND)
-
-   
-    # @method_decorator(group_required('REALTOR'))
-    def delete(self, request, id):
-        try:
-            lease = self.get_object(request=request, id=id)
-            lease.delete()
-            return customResponse(message=_("Lease deleted successfully"), status=status.HTTP_200_OK)
-        except Lease.DoesNotExist:
-            error = {'detail': _("Lease Not Found")}
-            return Response(error, status.HTTP_404_NOT_FOUND)
         
 
 

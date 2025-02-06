@@ -10,7 +10,7 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register(r'properties', PropertyViewSet, basename='tenants')
+router.register(r'properties', PropertyViewSet, basename='properties')
 
 urlpatterns = [
     path('', include(router.urls)),

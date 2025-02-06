@@ -20,6 +20,13 @@ today = timezone.now().date()
 TERMS = [
     ('Fixed Term', _('Fixed Term')),
     ('Month-To-Month', _('Month-To-Month')),
+    ('Weekly', _('Weekly')),
+    ('Bi-Weekly', _('Bi-Weekly')),
+    ('Quarterly', _('Quarterly')),
+    ('Semi Annual', _('Semi Annual')),
+    ('Annually', _('Annually')),
+    ('Rent-to-Own', _('Rent-to-Own')),
+    ('Commercial', _('Commercial')),
 ]
 
 

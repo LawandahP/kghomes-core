@@ -4,6 +4,7 @@ from files.models import Files
 from files.serializers import FilesSerializer
 # from unit.serializers import UnitSerializer
 
+from units.models import Units
 from utils.utils import logger
 from .models import Property
 
@@ -15,10 +16,7 @@ class PropertySerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Property
-        fields = [
-            'id', 'slug', 'latlng', 'bounds', 'address', 'name', 'images',
-            'owner', 'account', 'amenities', 'property_type', 'description'
-        ]
+        fields = '__all__'
         read_only_fields = [
             "units",
             "id",
@@ -26,18 +24,22 @@ class PropertySerializer(serializers.ModelSerializer):
         ]
     
     def create(self, validated_data):
-        location = validated_data.pop('address', None)
+        property = super().create(validated_data)
+        self.update_units_count(property)
+        return property
 
-        if location:
-            address = location["address"]
-        else:
-            address = None
 
-        return Property.objects.create(
-            **validated_data,
-            address=address
-        )
+    def update_units_count(self, property):
+        # Calculate the count of units and update the units_count
+        property.unit_count = property.units.count()
+        property.rented_units_count = property.units.filter(status=Units.RENTED).count()
+        property.vacant_units_count = property.units.filter(status=Units.VACANT).count()
+        property.save()
 
+    def to_representation(self, instance):
+        # Update contact count before returning the representation
+        self.update_units_count(instance)
+        return super().to_representation(instance)
     
 
 #   class MaintenanceAdminSerializer(serializers.ModelSerializer):

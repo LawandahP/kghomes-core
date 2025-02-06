@@ -14,13 +14,13 @@ class UnitSerializer(serializers.ModelSerializer):
         model = Units
         fields = [
             "id", "unit_number", "size", "bedrooms", "unit_type",
-            "bathrooms", "monthly_rent", "amenities", "property", 
+            "bathrooms", "rent", "amenities", "property", 
             "status"
         ] 
 
     def create(self, validated_data):
         property = validated_data.pop('property')
-        property = Property.objects.get(id = property["id"])
+        property = Property.objects.get(id=property)
         return Units.objects.create(
             **validated_data, 
             property=property

@@ -25,9 +25,6 @@ class CustomDateField(serializers.CharField):
 
 class LeaseSerializer(serializers.ModelSerializer):
     file = FilesSerializer(many=False, read_only=True)
-    tenant = serializers.JSONField()
-    unit = serializers.JSONField()
-    property = serializers.JSONField()
 
     class Meta:
         model = Lease
@@ -43,24 +40,6 @@ class LeaseSerializer(serializers.ModelSerializer):
             "account"
         ]
 
-    def create(self, validated_data):
-        # data sent as object
-        tenant = validated_data.pop('tenant')
-        unit = validated_data.pop('unit')
-        property_ = validated_data.pop('property') 
-
-        tenant = tenant["tenant"]["id"]
-        unit = Units.objects.get(id=unit["id"])
-        property_ = Property.objects.get(id=property_["id"])
-
-
-        return Lease.objects.create(
-            **validated_data, 
-            tenant=tenant,
-            unit=unit,
-            property=property_
-        )
-    
     
     
 class LeaseDetailsSerializer(serializers.ModelSerializer):

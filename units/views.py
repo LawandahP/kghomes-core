@@ -1,7 +1,8 @@
-import math
-from django.http import Http404
+from django.db import transaction
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics, status
 from rest_framework.response import Response
+from rest_framework.decorators import action
 
 from django.utils.translation import gettext_lazy as _
 from bff.utils import UseAuthApi
@@ -9,31 +10,28 @@ from properties.models import Property
 from units.filters import UnitFilter
 from units.serializers import UnitAssignmentSerializer, UnitSerializer
 from units.models import Assignment, Units
-from utils.utils import CustomPagination, customResponse, logger
+from utils.responseBody import ResponseBody
+from utils.utils import CustomPagination, customResponse, logger, upload_data
 
 
-class CreatViewUnits(generics.GenericAPIView):
+from rest_framework import viewsets
+
+class UnitViewSet(ResponseBody, viewsets.ModelViewSet):
     serializer_class = UnitSerializer
     filterset_class = UnitFilter
     pagination_class = CustomPagination
     search_fields = ['unit_number']
+    # permission_classes = [IsAuthenticated,]
 
-    def get_all_units(self, request):
-        units = Units.objects.filter(account=request.user["account"]["id"])
-        return len(units)
-    
-    def get_object(self, request):
-        queryset = Units.objects.filter(account=request.user["account"]["id"])
-        filter = self.filter_queryset(queryset)
-        units = self.paginate_queryset(filter)
-        return units
 
-    
-    def post(self, request):
+    def get_queryset(self):
+        return Units.objects.filter(account=self.request.user["account"]["id"])
+
+    def create(self, request, *args, **kwargs):
         data = request.data
         user = request.user
 
-        serializer = self.serializer_class(data=data, context={'request': request})
+        serializer = self.get_serializer(data=data, context={'request': request})
         if serializer.is_valid():
             account = user["account"]["id"]
             unit_number = data['unit_number']
@@ -41,83 +39,82 @@ class CreatViewUnits(generics.GenericAPIView):
             
             return customResponse(
                 payload=serializer.data,
-                mesage=_(f"Unit {unit_number} Registered Successfully."),
+                message=_(f"Unit {unit_number} Registered Successfully."),
                 status=status.HTTP_201_CREATED
             )
         error = {'detail': serializer.errors}
         return Response(error, status.HTTP_400_BAD_REQUEST)
-    
-    
-    def get(self, request):
+
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
+    def bulk_delete_units(self, request):
         try:
-            totalCount = self.get_all_units(request)
-            page_size = request.GET.get("size", 10)
-            totalpages = math.ceil(totalCount/int(page_size))
+            ids = request.data.get('ids', [])
+            if not ids:
+                return Response({"error": "No Contacts selected."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not isinstance(ids, list):
+                return Response({"error": "Unitss should be provided as a list."}, status=status.HTTP_400_BAD_REQUEST)
+
+            queryset = self.get_queryset().filter(id__in=ids)
+            queryset.delete()
+
+            return Response({"message": f"Unitss deleted successfully."}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"{str(e)}"}, status=400)
+        
+    
+    @action(detail=False, methods=['post'], url_path="bulk-upload")
+    def bulk_upload_units(self, request):
+        try:
+            with transaction.atomic():
+                account = request.user["account"]["id"]
+                data = request.data
+                units_data = data.get('units')
+
+                if not units_data:
+                    return Response({"detail": "No units data provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+                logger.warning(f"Units Data {units_data}")
+                # Validate and create units
+                unit_serializer = UnitSerializer(data=units_data, many=True)
+                if unit_serializer.is_valid():
+                    for unit in unit_serializer.validated_data:
+                        print("Unit", unit)
+                        property_id = unit.get('property')
+                        print("Property Id", property_id)
+                        if property_id:
+                            try:
+                                property_instance = Property.objects.get(id=property_id)
+                                unit['property'] = property_instance
+                            except Property.DoesNotExist:
+                                return Response(
+                                    {"detail": f"Property with ID {property_id} does not exist."},
+                                    status=status.HTTP_400_BAD_REQUEST
+                                )
+                        unit['account'] = account
+
+                        # unit['is_unit'] = True
+                    Units.objects.bulk_create([Units(**unit) for unit in unit_serializer.validated_data])
+
+                    return Response({"message": "Units uploaded successfully", "data": data}, status=status.HTTP_201_CREATED)
+                else:
+                    return Response(unit_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"An error occurred during bulk upload: {str(e)}")
+            return Response({"detail": f"An error occurred: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
             
-            units = self.get_object(request)
-            count = len(units)
-            serializer = UnitSerializer(units, many=True)
-
-            filteredPages=math.ceil(count/int(page_size))
-            return customResponse(
-                payload=serializer.data, 
-                status=status.HTTP_200_OK, 
-                count=count,
-                totalCount=totalCount,
-                totalPages=totalpages,
-                totalFilteredPages=filteredPages, 
-                success=True
-            )
-        except Http404 as e:
-            error = {'detail': str(e)}
-            return Response(error, status.HTTP_404_NOT_FOUND)
-
-
-class UnitDetailView(generics.GenericAPIView):
-    serializer_class = UnitSerializer
-
-    def get_object(self, request, id):
-        return Units.objects.get(id=id)
-
-    # @method_decorator(group_required('REALTOR', 'LANDLORD'))
-    def get(self, request, id):
+    @action(detail=False, methods=['post'], url_path="file-upload", permission_classes=[IsAuthenticated])
+    def file_upload_units(self, request, format=None):
         try:
-            unit = self.get_object(request, id)
-            serializer = self.serializer_class(unit, many=False)
-        except Units.DoesNotExist:
-            error = {'detail': _("Unit not found")}
-            return Response(error, status.HTTP_404_NOT_FOUND)
-        return customResponse(payload=serializer.data, status=status.HTTP_200_OK)
+            account = request.user["account"]["id"]
+            excel_file = request.FILES['file']
+            file_type = request.GET.get('file_type', 'csv')
+            fields = ['unit_number', 'size', 'bedrooms', 'bathrooms', 'amenities', 'rent', 'unit_type']
+            return upload_data(account, excel_file, Units, fields)
+        except Exception as e:
+            return Response({"detail": f"An error occurred: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-    def patch(self, request, id):
-        try:
-            unit = self.get_object(request=request, id=id)
-            serializer = self.serializer_class(unit, data=request.data, partial=True)
-
-            if serializer.is_valid():
-                serializer.save()
-                #     audit(request=request, action_flag=f"Updated {request.data} for Property {property.name}")
-                return customResponse(
-                    payload=serializer.data,
-                    message=_("Unit updated successfully"),
-                    status=status.HTTP_200_OK
-                )
-            error = {'detail': serializer.errors}
-            return Response(error, status.HTTP_400_BAD_REQUEST)
-        except Units.DoesNotExist:
-            error = {'detail': _("Unit not found")}
-            return Response(error, status.HTTP_404_NOT_FOUND)
-
-   
-    # @method_decorator(group_required('REALTOR'))
-    def delete(self, request, id):
-        try:
-            unit = self.get_object(request=request, id=id)
-            unit.delete()
-            return customResponse(message=_("Unit deleted successfully"), status=status.HTTP_200_OK)
-        except Units.DoesNotExist:
-            error = {'detail': _("Unit Not Found")}
-            return Response(error, status.HTTP_404_NOT_FOUND)
 
 
 class AssignUnitToTenant(generics.GenericAPIView):

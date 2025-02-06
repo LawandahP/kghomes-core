@@ -10,10 +10,6 @@ from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 
-
-from rest_framework import status
-from rest_framework.response import Response
-
 from files.models import TimeStamps
 from properties.models import Property
 
@@ -33,19 +29,24 @@ UNIT_TYPE_CHOICES = [
     # Add more choices as needed
 ]
 
-UNIT_STATUS = [
-    ('Vacant', _('Vacant')),
-    ('Occupied', _('Occupied'))
-]
+
 
 class Units(TimeStamps):
+    
+    VACANT = "Vacant"
+    RENTED = "Rented"
+
+    UNIT_STATUS = [
+        (VACANT, _(VACANT)),
+        (RENTED, _(RENTED))
+    ]
     id               = CustomUUIDField()
     unit_number      = models.CharField(max_length=255)
-    size             = models.DecimalField(max_digits=8, decimal_places=2)
-    bedrooms         = models.IntegerField()
-    bathrooms        = models.IntegerField()
+    size             = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    bedrooms         = models.PositiveIntegerField(null=True, blank=True)
+    bathrooms        = models.PositiveIntegerField(null=True, blank=True)
     amenities        = models.JSONField(blank=True, null=True)
-    monthly_rent     = models.IntegerField(null=True)
+    rent             = models.PositiveIntegerField(null=True, blank=True)
     unit_type        = models.CharField(max_length=50, choices=UNIT_TYPE_CHOICES, blank=True, null=True)
     property         = models.ForeignKey(Property, related_name="units", on_delete=models.CASCADE, blank=True, null=True)
     account          = models.CharField(max_length=100, blank=True)
